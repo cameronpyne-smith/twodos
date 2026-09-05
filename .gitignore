@@ -1,0 +1,35 @@
+# Design notes — kept local, not published
+SPEC.md
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+.cache/
+*.tsbuildinfo
+
+# Platform
+.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Coverage
+coverage/
+
+# Editors
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

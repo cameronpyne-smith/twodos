@@ -1,0 +1,26 @@
+{
+  "name": "twodos",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/dev.ts",
+    "migrate": "tsx scripts/migrate.ts",
+    "vendor": "tsx scripts/vendor.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "hono": "^4.6.14"
+  },
+  "devDependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "dotenv": "^16.4.7",
+    "htmx.org": "^2.0.4",
+    "pg": "^8.13.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
