@@ -7,7 +7,7 @@ config({ path: '.env.local', quiet: true })
 
 const MIGRATIONS_DIR = join(process.cwd(), 'migrations')
 
-const connectionString = process.env.DATABASE_URL
+const connectionString = process.env.DATABASE_URL ?? process.env.DATABASE_URL_POOLED
 if (!connectionString) {
   console.error('DATABASE_URL is not set. Copy .env.example to .env.local and fill it in.')
   process.exit(1)
