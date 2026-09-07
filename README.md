@@ -2,7 +2,8 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 0 — walking skeleton.** One implicit list, no auth, no users.
+**Current state: Milestone 1 — auth.** Signup, login, logout, password reset and login
+rate limiting. One implicit list shared by every account; lists and memberships come next.
 Add, tick, untick and delete todos. Done items collapse into a group that hides after 24 hours.
 
 ## Stack
@@ -17,8 +18,13 @@ static asset. The server is bundled by esbuild into Vercel's Build Output API fo
 
 ```
 src/app.tsx         Routes
+src/auth.ts         Password hashing, session cookies, route guard
+src/users.ts        User, reset-token and login-attempt queries
+src/email.ts        Password-reset email over SMTP
 src/views.tsx       Server-rendered JSX (Layout, Page, TodoList)
-src/db.ts           Neon queries
+src/auth-views.tsx  Sign in, sign up, forgot and reset pages
+src/db.ts           Todo queries
+src/sql.ts          Lazy Neon connection
 src/vercel.ts       Production entry point (Node request listener)
 src/dev.ts          Local dev server, serves public/ and the app
 migrations/         Numbered .sql files, applied in order
@@ -54,10 +60,43 @@ npm run migrate
 npm run dev       # http://localhost:3000
 ```
 
+## Authentication
+
+Email and password. Passwords are hashed with bcrypt; sessions are a signed JWT in an
+httpOnly, SameSite=Lax cookie lasting 90 days.
+
+Sessions are **deliberately not revocable** — the token carries only a user id, and the
+only way to invalidate one is to rotate `JWT_SECRET`, which signs everyone out. This is
+an accepted trade for a list shared with a partner and close family. Because of it, list
+membership must never be stored in the token: it would go stale the moment someone is
+added or removed, so membership is always checked against the database.
+
+Login is rate limited to 10 attempts per 15 minutes, matched on **either** the email or
+the IP, recorded in `login_attempts`. Once tripped, even the correct password is refused
+until the window passes.
+
+Password reset uses a single-use token, sha256-hashed at rest, expiring after an hour.
+The forgot-password form returns the same response whether or not the address has an
+account, so it cannot be used to discover who is registered.
+
+There is no email verification. The audience is known, and an unverified state would
+complicate every other flow for no benefit here.
+
+### Sending reset emails
+
+Set `SMTP_USER` and `SMTP_PASS` to a Gmail address and an
+[App Password](https://support.google.com/accounts/answer/185833) — not the account
+password, and it requires 2FA on the account.
+
+**If they are unset, reset links are written to the server log instead of emailed.**
+That keeps local development working without credentials, but it means password reset
+is not actually self-serve in production until these are configured.
+
 ## Deploying
 
-Push to `main` and Vercel deploys automatically. Set `DATABASE_URL` and
-`DATABASE_URL_POOLED` in the project's environment variables.
+Push to `main` and Vercel deploys automatically. Set these in the project's
+environment variables: `DATABASE_URL`, `DATABASE_URL_POOLED`, `JWT_SECRET`, and
+optionally `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM`.
 
 `npm run build` produces Vercel's [Build Output API](https://vercel.com/docs/build-output-api/v3)
 format in `.vercel/output`: a single self-contained ESM function plus `public/`

@@ -1,5 +1,6 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
 import type { Todo } from './db.js'
+import type { User } from './users.js'
 
 export const Layout: FC<PropsWithChildren<{ title: string }>> = ({ title, children }) => (
   <html lang="en">
@@ -72,10 +73,18 @@ export const TodoList: FC<{ open: Todo[]; done: Todo[] }> = ({ open, done }) => 
   </div>
 )
 
-export const Page: FC<{ open: Todo[]; done: Todo[] }> = ({ open, done }) => (
+export const Page: FC<{ open: Todo[]; done: Todo[]; user: User }> = ({ open, done, user }) => (
   <Layout title="twodos">
     <header class="app-header">
       <h1>twodos</h1>
+      <div class="who">
+        <span>{user.display_name}</span>
+        <form method="post" action="/logout">
+          <button type="submit" class="link">
+            Sign out
+          </button>
+        </form>
+      </div>
     </header>
 
     <main>

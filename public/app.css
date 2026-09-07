@@ -179,3 +179,130 @@ button:focus-visible {
 .done-group .list {
   margin-top: 0.5rem;
 }
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.who {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.who form {
+  margin: 0;
+}
+
+button.link {
+  padding: 0;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+button.link:hover {
+  color: var(--text);
+}
+
+.auth {
+  max-width: 22rem;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 3rem) 1rem 3rem;
+}
+
+.auth h1 {
+  margin: 0 0 2rem;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.auth h2 {
+  margin: 0 0 1.25rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.auth form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.auth label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.auth input {
+  min-height: var(--tap);
+  padding: 0 0.85rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.auth input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.auth small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.auth button[type='submit'] {
+  min-height: var(--tap);
+  margin-top: 0.25rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.auth .error,
+.auth .note {
+  margin: 0 0 1.25rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.88rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.auth .error {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+
+.auth .note {
+  color: var(--muted);
+}
+
+.auth .alt {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.auth a {
+  color: var(--accent);
+}
