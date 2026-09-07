@@ -2,9 +2,9 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 1 — auth.** Signup, login, logout, password reset and login
-rate limiting. One implicit list shared by every account; lists and memberships come next.
-Add, tick, untick and delete todos. Done items collapse into a group that hides after 24 hours.
+**Current state: Milestone 2 — lists and invites.** Accounts, multiple lists, membership,
+and single-use invite links. Add, tick, untick and delete todos within a list. Done items
+collapse into a group that hides after 24 hours.
 
 ## Stack
 
@@ -20,6 +20,7 @@ static asset. The server is bundled by esbuild into Vercel's Build Output API fo
 src/app.tsx         Routes
 src/auth.ts         Password hashing, session cookies, route guard
 src/users.ts        User, reset-token and login-attempt queries
+src/lists.ts        List, membership and invite queries
 src/email.ts        Password-reset email over SMTP
 src/views.tsx       Server-rendered JSX (Layout, Page, TodoList)
 src/auth-views.tsx  Sign in, sign up, forgot and reset pages
@@ -91,6 +92,27 @@ password, and it requires 2FA on the account.
 **If they are unset, reset links are written to the server log instead of emailed.**
 That keeps local development working without credentials, but it means password reset
 is not actually self-serve in production until these are configured.
+
+## Lists and sharing
+
+A user belongs to any number of lists through `memberships`. Signing up normally creates
+a list called Home; signing up through an invite joins that list instead and creates
+nothing.
+
+Navigation is one list at a time at `/list/:id`, with a switcher in the header. Each list
+is a separate context, so there is no way to post to the wrong one by mistake.
+
+**Every list-scoped route is guarded by membership**, and `list_id` is part of the `WHERE`
+clause on every todo query — so a todo id from one list cannot be read, ticked or deleted
+through another list, even by a member of both. Non-members get a 404 rather than a 403,
+which avoids confirming that a list exists.
+
+Invites are single-use links, sha256-hashed at rest, expiring after 7 days, consumed with
+`UPDATE .. RETURNING` so they cannot be replayed. You send the link yourself — there is no
+invite email, which keeps the system's only email dependency the password reset.
+
+Opening an invite while signed out stores the token in a short-lived httpOnly cookie and
+redeems it after signup or login.
 
 ## Deploying
 
