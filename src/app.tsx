@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import {
+  baseUrl,
   clientIp,
   currentUser,
   emailProblem,
@@ -122,7 +123,7 @@ app.post('/forgot', async (c) => {
     const { token, hash } = generateToken()
     await invalidateUserResets(user.id)
     await createPasswordReset(user.id, hash)
-    await sendPasswordReset(user.email, new URL(`/reset/${token}`, c.req.url).toString())
+    await sendPasswordReset(user.email, new URL(`/reset/${token}`, baseUrl(c)).toString())
   }
 
   await pruneLoginAttempts()

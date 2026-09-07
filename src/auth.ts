@@ -34,13 +34,25 @@ export function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
+export function isHttps(c: Context): boolean {
+  const forwarded = c.req.header('x-forwarded-proto')
+  if (forwarded) return forwarded.split(',')[0]?.trim() === 'https'
+  return new URL(c.req.url).protocol === 'https:'
+}
+
+export function baseUrl(c: Context): string {
+  const host = c.req.header('x-forwarded-host') ?? c.req.header('host')
+  if (!host) return new URL('/', c.req.url).toString()
+  return `${isHttps(c) ? 'https' : 'http'}://${host}`
+}
+
 export async function startSession(c: Context, userId: string): Promise<void> {
   const exp = Math.floor(Date.now() / 1000) + SESSION_DAYS * 24 * 60 * 60
   const token = await sign({ sub: userId, exp }, secret(), 'HS256')
 
   setCookie(c, COOKIE, token, {
     httpOnly: true,
-    secure: new URL(c.req.url).protocol === 'https:',
+    secure: isHttps(c),
     sameSite: 'Lax',
     path: '/',
     maxAge: SESSION_DAYS * 24 * 60 * 60,
