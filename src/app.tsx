@@ -35,4 +35,9 @@ app.post('/todos/:id/delete', async (c) => {
 
 app.get('/healthz', (c) => c.text('ok'))
 
+app.onError((err, c) => {
+  console.error(err)
+  return c.text(`Server error: ${err instanceof Error ? err.message : String(err)}`, 500)
+})
+
 export default app
