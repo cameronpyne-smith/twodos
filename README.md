@@ -9,17 +9,20 @@ Add, tick, untick and delete todos. Done items collapse into a group that hides 
 
 TypeScript · Hono · htmx · Neon Postgres · Vercel · raw SQL migrations · hand-written CSS.
 
-No build step. htmx is vendored into `public/`, the stylesheet is a static asset.
+No build step on the client: htmx is vendored into `public/` and the stylesheet is a
+static asset. The server is bundled by esbuild into Vercel's Build Output API format
+(see Deploying).
 
 ## Layout
 
 ```
-api/index.ts        Vercel entry point (wraps the Hono app)
 src/app.tsx         Routes
 src/views.tsx       Server-rendered JSX (Layout, Page, TodoList)
 src/db.ts           Neon queries
+src/vercel.ts       Production entry point (Node request listener)
 src/dev.ts          Local dev server, serves public/ and the app
 migrations/         Numbered .sql files, applied in order
+scripts/build.ts    Bundles the server into .vercel/output
 scripts/migrate.ts  Migration runner
 scripts/vendor.ts   Copies htmx from node_modules into public/
 public/             Static assets (app.css, htmx.min.js)
@@ -53,9 +56,27 @@ npm run dev       # http://localhost:3000
 
 ## Deploying
 
-Push to GitHub, import the repo at <https://vercel.com>, and set `DATABASE_URL`
-as an environment variable in the project settings. `vercel.json` rewrites all
-non-static routes to the Hono handler in `api/`.
+Push to `main` and Vercel deploys automatically. Set `DATABASE_URL` and
+`DATABASE_URL_POOLED` in the project's environment variables.
+
+`npm run build` produces Vercel's [Build Output API](https://vercel.com/docs/build-output-api/v3)
+format in `.vercel/output`: a single self-contained ESM function plus `public/`
+as static files, with a route table that serves static files first and sends
+everything else to the function.
+
+This is deliberate rather than incidental. Vercel's zero-config `api/` directory
+only compiles files inside `api/` itself — TypeScript imported from `src/` is not
+included, and the function crashes at boot with `ERR_MODULE_NOT_FOUND`. Generating
+files into `api/` during the build does not help either, because Vercel plans the
+build from the source tree before the build command runs. Bundling the server
+ourselves sidesteps the platform's file tracing entirely.
+
+To reproduce a deployment locally:
+
+```sh
+npm run build
+npx vercel deploy --prebuilt --prod
+```
 
 Vercel Hobby is free and requires no card, but forbids commercial use.
 
@@ -64,6 +85,7 @@ Vercel Hobby is free and requires no card, but forbids commercial use.
 | Command | Does |
 |---|---|
 | `npm run dev` | Local server with hot reload |
+| `npm run build` | Bundles the server into `.vercel/output` |
 | `npm run migrate` | Applies pending migrations, tracked in `_migrations` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run vendor` | Re-copies `htmx.min.js` into `public/` |
