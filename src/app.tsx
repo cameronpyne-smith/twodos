@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
-import { createTodo, deleteTodo, listTodos, toggleTodo } from './db'
-import { Page, TodoList } from './views'
+import { createTodo, deleteTodo, listTodos, toggleTodo } from './db.js'
+import { Page, TodoList } from './views.js'
 
 const app = new Hono()
 

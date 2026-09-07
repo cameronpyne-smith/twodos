@@ -5,7 +5,7 @@ config({ path: '.env.local', quiet: true })
 const { serve } = await import('@hono/node-server')
 const { serveStatic } = await import('@hono/node-server/serve-static')
 const { Hono } = await import('hono')
-const app = (await import('./app')).default
+const app = (await import('./app.js')).default
 
 const root = new Hono()
 root.use('/*', serveStatic({ root: './public' }))

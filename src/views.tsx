@@ -1,5 +1,5 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
-import type { Todo } from './db'
+import type { Todo } from './db.js'
 
 export const Layout: FC<PropsWithChildren<{ title: string }>> = ({ title, children }) => (
   <html lang="en">
