@@ -168,16 +168,17 @@ bar belongs to the assignee. Both are therefore visible on the same row, which m
 an overdue todo assigned to a specific person is the one worth spotting. The bar is drawn with
 `box-shadow: inset`, so it costs no layout shift and leaves the existing overdue rule alone.
 
-**The array order in `src/colours.ts` is a mechanism, not a preference.** Automatic assignment
-takes the lowest-index colour not already used in the list, so the order decides which colours
-real people get. The well-separated hues come first; the closer pairs (`pink`/`rose`,
-`ice`/`teal`/`slate`) sit at the end and are only ever reached by a deliberate pick.
+**A colour is picked, and then it stays.** Signup assigns one at random so nobody starts
+blank; after that the only thing that changes it is the person choosing a different one on
+`/profile`. Nothing reassigns it — not joining a list, not anyone else's choice.
 
-Signup assigns a random colour. **Joining a list re-assigns it only if it clashes** with a
-member already there — so people who see each other's todos never share a colour, without a
-per-list colour column and without disturbing anyone whose choice is already unique. The
-trade-off is accepted: a deliberate choice can be overridden by joining a list where it is
-taken, which is better than two people rendering identically.
+Two people in one list may therefore end up the same colour. That is allowed. The Share panel
+shows everyone's colour, so a clash is visible and either person can change theirs in two taps
+— which is a smaller cost than code that silently overrides a choice someone made on purpose.
+The order in `src/colours.ts` is just the order the swatches appear in; it carries no logic.
+
+The pill always names the person, so a clash degrades the colour to decoration rather than
+making the row ambiguous.
 
 Because todos now join `memberships` rather than `users` to reach the assignee, an assignee who
 is no longer a member of the list renders with no name and no colour instead of a stale one.

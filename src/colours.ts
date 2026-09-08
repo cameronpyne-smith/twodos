@@ -39,8 +39,3 @@ export function asColour(value: string | null | undefined): Colour {
 export function randomColour(): Colour {
   return COLOURS[Math.floor(Math.random() * COLOURS.length)] ?? DEFAULT_COLOUR
 }
-
-export function nextColour(taken: readonly string[]): Colour {
-  const free = COLOURS.find((c) => !taken.includes(c))
-  return free ?? COLOURS[taken.length % COLOURS.length] ?? DEFAULT_COLOUR
-}
