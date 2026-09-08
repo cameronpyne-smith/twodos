@@ -14,6 +14,7 @@ export const Layout: FC<PropsWithChildren<{ title: string }>> = ({ title, childr
       <title>{title}</title>
       <link rel="stylesheet" href="/app.css" />
       <script src="/htmx.min.js" defer></script>
+      <script src="/ding.js" defer></script>
     </head>
     <body>{children}</body>
   </html>

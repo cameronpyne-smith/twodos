@@ -2,11 +2,12 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.4 — auto-saving edit form.** Accounts, multiple lists,
+**Current state: Milestone 3.5 — completion sound.** Accounts, multiple lists,
 membership and single-use invite links. Todos carry an assignee, a due date and notes, all
 settable as you add them, with overdue highlighting and filter chips. Each person has a colour,
 shown as an edge bar on the todos assigned to them, and any todo can be flagged important,
-which floats it to the top. Done items collapse into a group that hides after 24 hours.
+which floats it to the top. Done items collapse into a group that hides after 24 hours, and
+ticking a todo plays a short ding.
 
 ## Stack
 
@@ -37,7 +38,7 @@ migrations/         Numbered .sql files, applied in order
 scripts/build.ts    Bundles the server into .vercel/output
 scripts/migrate.ts  Migration runner
 scripts/vendor.ts   Copies htmx from node_modules into public/
-public/             Static assets (app.css, htmx.min.js)
+public/             Static assets (app.css, htmx.min.js, ding.js)
 ```
 
 ## Setup
@@ -261,6 +262,36 @@ Worth recording that this was chosen over a neutral star knowing the cost: **yel
 yellow on a light ground**, so light mode uses a dark gold (`#c99700`) and only dark mode gets
 the real `#ffd54d`. That gold also sits near the `amber` user colour. Both were judged acceptable
 for how much more noticeable it is, on a list where an important item is rare.
+
+## The completion sound
+
+Ticking an open todo plays a short two-note ding. It is **synthesised in the browser**, not a
+sound file: `public/ding.js` builds four sine oscillators through gain envelopes on a single
+`AudioContext`. That is around forty lines and no asset at all, which beats shipping an mp3 —
+nothing to license, nothing to cache, no second request, and the pitch and decay are tunable by
+editing two numbers rather than by finding a different recording.
+
+Two notes a perfect fourth apart (B5 then E6), the second landing 85ms after the first, each with a
+quiet partial an octave above for a little bell shimmer and an exponential decay. The rise is 6ms
+rather than instant, which is what keeps it from clicking.
+
+**It fires on the click, not on the response.** This is deliberate and has a cost: a toggle that
+fails on the server still dings. It buys two things. The sound lands the instant you tap instead
+of after a round trip — and Neon's free tier can take a second to wake, which would put the ding
+so far behind the tap that it reads as a bug. It also sidesteps the autoplay policy for free: an
+`AudioContext` may only start from a user gesture, and a click handler *is* that gesture, whereas
+htmx's `afterRequest` fires in a later task where the browser may refuse to start it.
+
+The listener is **delegated on `document`**, so the list can re-render as often as it likes with
+nothing to rebind. It reads the row's own state to decide: a click inside `.tick` dings unless the
+`li` already carries `done`, so completing something is celebrated and un-completing it is silent.
+The context is created lazily on the first tick — constructing one at page load starts it
+suspended and logs a warning — reused thereafter, and resumed if the browser suspended it while
+the tab was in the background. The whole call sits in a `try`/`catch`: on a browser without Web
+Audio, or with it blocked, the tick still works and simply makes no sound.
+
+There is no mute setting. Device volume already covers it, and iOS respects the ringer switch for
+Web Audio, so the control exists where people expect it.
 
 ## Staying live
 
