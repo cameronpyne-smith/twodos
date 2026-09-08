@@ -241,12 +241,13 @@ button.link {
   color: var(--muted);
   background: none;
   border: 0;
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
 }
 
 button.link:hover {
   color: var(--text);
+  text-decoration: underline;
 }
 
 .auth {
