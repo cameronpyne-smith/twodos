@@ -28,9 +28,11 @@ const FILTER_LABELS: Record<Filter, string> = {
 
 const query = (filter: Filter) => (filter === 'all' ? '' : `?filter=${filter}`)
 
+const IDLE = "document.visibilityState === 'visible' && !document.querySelector('.editing')"
+
 const POLL = [
-  "every 10s [document.visibilityState === 'visible' && !document.querySelector('.editing')]",
-  "visibilitychange[document.visibilityState === 'visible'] from:document",
+  `every 10s [${IDLE}]`,
+  `visibilitychange[${IDLE}] from:document`,
   'twodos:refresh from:body',
 ].join(', ')
 
@@ -218,6 +220,7 @@ export type TodoListProps = {
   filter: Filter
   open: Todo[]
   done: Todo[]
+  editing: { todo: Todo; members: User[] } | null
   counts: Record<Filter, number>
   total: number
   today: string
@@ -230,6 +233,7 @@ export const TodoList: FC<TodoListProps> = ({
   filter,
   open,
   done,
+  editing,
   counts,
   total,
   today,
@@ -245,12 +249,20 @@ export const TodoList: FC<TodoListProps> = ({
   >
     {total > 0 && <Filters listId={listId} filter={filter} counts={counts} />}
 
-    {open.length === 0 ? (
+    {open.length === 0 && !editing ? (
       <p class="empty">
         {total === 0 ? 'Nothing to do. Suspicious.' : 'Nothing here with that filter.'}
       </p>
     ) : (
       <ul class="list">
+        {editing && (
+          <TodoEditRow
+            todo={editing.todo}
+            listId={listId}
+            filter={filter}
+            members={editing.members}
+          />
+        )}
         {open.map((t) => (
           <TodoRow key={t.id} todo={t} listId={listId} filter={filter} today={today} />
         ))}

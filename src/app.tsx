@@ -96,20 +96,26 @@ async function todoProps(
   userId: string,
   filter: Filter,
   done_open: boolean,
+  editingId: string | null = null,
 ): Promise<TodoListProps> {
   const todos = await listTodos(listId)
   const unfinished = todos.filter((t) => t.completed_at === null)
   const { open, done } = splitTodos(applyFilter(todos, filter, userId))
   const today = londonToday()
 
+  const editingTodo = editingId
+    ? (unfinished.find((t) => t.id === editingId) ?? null)
+    : null
+
   return {
     listId,
     filter,
-    open,
+    open: editingTodo ? open.filter((t) => t.id !== editingTodo.id) : open,
     done,
+    editing: editingTodo ? { todo: editingTodo, members: await membersOfList(listId) } : null,
     total: todos.length,
     today,
-    version: todoVersion(todos, filter, today),
+    version: todoVersion(todos, filter, today, editingTodo?.id ?? null),
     doneOpen: done_open,
     counts: {
       all: unfinished.length,
@@ -120,12 +126,13 @@ async function todoProps(
   }
 }
 
-const renderList = async (c: Context<Env>) => {
+const renderList = async (c: Context<Env>, editingId: string | null = null) => {
   const props = await todoProps(
     c.get('list').id,
     c.get('user').id,
     parseFilter(c.req.query('filter')),
     doneOpen(c),
+    editingId,
   )
   return <TodoList {...props} />
 }
@@ -362,8 +369,10 @@ app.get('/list/:id/todos', async (c) => {
 app.post('/list/:id/todos', async (c) => {
   const body = await c.req.parseBody()
   const title = field(body, 'title')
-  if (title) await createTodo(c.get('list').id, title.slice(0, 500), c.get('user').id)
-  return c.html(await renderList(c))
+  const id = title
+    ? await createTodo(c.get('list').id, title.slice(0, 500), c.get('user').id)
+    : null
+  return c.html(await renderList(c, id))
 })
 
 app.post('/list/:id/todos/:todoId/toggle', async (c) => {
@@ -381,6 +390,7 @@ app.get('/list/:id/todos/:todoId/row', async (c) => {
   const todo = await findTodo(list.id, c.req.param('todoId'))
   if (!todo) return c.notFound()
 
+  c.header('HX-Trigger-After-Swap', 'twodos:refresh')
   return c.html(
     <TodoRow
       todo={todo}

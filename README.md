@@ -155,6 +155,18 @@ buttons past the edge of a row that is `overflow: hidden`, making them unreachab
 scroll to recover them. Titles get `overflow-wrap: anywhere` for the same reason, so a
 pasted booking URL wraps instead of being clipped.
 
+**Adding opens the editor.** Adding a todo returns the list with that todo **hoisted out of
+sort order** and rendered as a form in the first row, so options can be set immediately. The
+hoist is necessary rather than cosmetic: a new todo has no due date and is not important, so
+it sorts below every dated and every important item and would otherwise appear well down the
+list, or not at all under a Mine/Theirs filter. Focus stays in the add box, so a burst still
+works — each ⏎ collapses the previous form and opens one for the newest todo. Cancel keeps
+the todo and collapses it to a row; the add was the commit point.
+
+`editingId` is part of the version hash, which is what makes the row settle into place: Save
+and Cancel both fire `twodos:refresh`, and because the poll route computes its version without
+an `editingId`, the hashes differ and the list re-renders sorted instead of returning 204.
+
 Editing swaps a single row for a form (`hx-target="closest li"`) rather than navigating.
 Saving returns the fresh row and sets an `HX-Trigger-After-Swap: twodos:refresh` response header, so
 the surrounding list re-renders and picks up any change in due-date ordering. The 10-second
@@ -217,6 +229,10 @@ The container polls every **10 seconds**, but only while the app is on screen
 (`document.visibilityState`) and only when no row is being edited — a swap would otherwise
 discard a half-typed form. It also fetches immediately on `visibilitychange`, so coming back
 to the app shows current data instead of waiting out the interval.
+
+Both triggers share the same guard, held in one `IDLE` constant. The `visibilitychange` trigger
+originally lacked the `.editing` check, so switching apps and back wiped an open form — the
+same defect as the timer, in the one trigger that hadn't been given the guard.
 
 **Unchanged responses do not swap.** Each rendered list carries a short content hash in
 `hx-headers`; the poll sends it back as `X-Todo-Version`, and if it still matches the server
