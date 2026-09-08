@@ -129,8 +129,9 @@ button:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: var(--tap);
+  min-width: var(--tap);
   min-height: var(--tap);
+  padding: 0 0.75rem 0 0.85rem;
   color: inherit;
   background: none;
   border: 0;
@@ -655,7 +656,7 @@ button.link:hover {
 }
 
 .todo[class*='who-'] .tick {
-  padding-left: 4px;
+  padding-left: 1.15rem;
 }
 
 .meta .chip.who {
