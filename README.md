@@ -149,6 +149,39 @@ a form someone is halfway through.
 Assignee and due date are validated server-side: an assignee must be a member of the list,
 which stops a tampered form assigning a todo to an arbitrary user id.
 
+## Staying live
+
+The list refreshes itself without polling being visible.
+
+The container polls every **10 seconds**, but only while the app is on screen
+(`document.visibilityState`) and only when no row is being edited — a swap would otherwise
+discard a half-typed form. It also fetches immediately on `visibilitychange`, so coming back
+to the app shows current data instead of waiting out the interval.
+
+**Unchanged responses do not swap.** Each rendered list carries a short content hash in
+`hx-headers`; the poll sends it back as `X-Todo-Version`, and if it still matches the server
+returns **`204 No Content`**, which htmx treats as nothing to do. So the common case — nothing
+happened in the last ten seconds — costs one tiny request and touches no DOM at all.
+
+The hash is taken over the **data about to be rendered** (row fields, the active filter, and
+today's date), not over the finished HTML — the HTML contains the hash, so hashing it would be
+circular. Deriving it from the data has a property an `updated_at` column would not: it cannot
+go stale. There is no write path to forget to touch, because anything that would change the
+markup necessarily changes the hash. Including today's date is what makes an item become
+overdue at midnight, with no database write anywhere.
+
+**Editing swaps a row, not the list.** The edit form targets `closest li`, so saving replaces
+that row and nothing else, then fires `HX-Trigger-After-Swap: twodos:refresh` to let the
+container re-render for any change in due-date ordering. Because the container was not itself
+swapped, it still holds its pre-edit hash, so that refresh sees a mismatch and returns the full
+list — the right behaviour, arrived at without special-casing.
+
+**The Done group keeps its open state.** A single inherited `hx-vals` on `<main>` reports
+whether it is expanded, so every request under it — poll, add, toggle, delete, save — carries
+the value and the server renders `<details open>` to match. The state is deliberately excluded
+from the content hash: including it would make expanding Done force a re-render, and would let
+two viewers with different Done states invalidate each other's polls forever.
+
 ## Colours
 
 Every user has a `colour` on `users` — one of ten keys (`amber`, `teal`, …), not a hex value.

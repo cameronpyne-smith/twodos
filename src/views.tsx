@@ -28,8 +28,13 @@ const FILTER_LABELS: Record<Filter, string> = {
 
 const query = (filter: Filter) => (filter === 'all' ? '' : `?filter=${filter}`)
 
-const POLL =
-  "every 30s [document.visibilityState === 'visible' && !document.querySelector('.editing')], twodos:refresh from:body"
+const POLL = [
+  "every 10s [document.visibilityState === 'visible' && !document.querySelector('.editing')]",
+  "visibilitychange[document.visibilityState === 'visible'] from:document",
+  'twodos:refresh from:body',
+].join(', ')
+
+const DONE_STATE = "js:{done: document.querySelector('.done-group')?.open ? 1 : 0}"
 
 export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: string }> = ({
   todo,
@@ -103,7 +108,7 @@ export const TodoEditRow: FC<{
 
   return (
     <li class="todo editing">
-      <form hx-post={`${base}${query(filter)}`} hx-target="#todo-list" hx-swap="outerHTML">
+      <form hx-post={`${base}${query(filter)}`} hx-target="closest li" hx-swap="outerHTML">
         {error && <p class="row-error">{error}</p>}
 
         <label>
@@ -192,6 +197,8 @@ export type TodoListProps = {
   counts: Record<Filter, number>
   total: number
   today: string
+  version: string
+  doneOpen: boolean
 }
 
 export const TodoList: FC<TodoListProps> = ({
@@ -202,12 +209,15 @@ export const TodoList: FC<TodoListProps> = ({
   counts,
   total,
   today,
+  version,
+  doneOpen,
 }) => (
   <div
     id="todo-list"
     hx-get={`/list/${listId}/todos${query(filter)}`}
     hx-trigger={POLL}
     hx-swap="outerHTML"
+    hx-headers={JSON.stringify({ 'X-Todo-Version': version })}
   >
     {total > 0 && <Filters listId={listId} filter={filter} counts={counts} />}
 
@@ -224,7 +234,7 @@ export const TodoList: FC<TodoListProps> = ({
     )}
 
     {done.length > 0 && (
-      <details class="done-group">
+      <details class="done-group" open={doneOpen}>
         <summary>
           Done <span class="count">{done.length}</span>
         </summary>
@@ -310,7 +320,7 @@ export const Page: FC<{
       </div>
     </header>
 
-    <main>
+    <main hx-vals={DONE_STATE}>
       <form
         class="add"
         hx-post={`/list/${list.id}/todos${query(todos.filter)}`}

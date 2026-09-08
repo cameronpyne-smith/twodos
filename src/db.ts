@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { londonToday } from './dates.js'
 import { sql } from './sql.js'
 
@@ -43,6 +44,24 @@ export function applyFilter(todos: Todo[], filter: Filter, userId: string): Todo
     default:
       return todos
   }
+}
+
+export function todoVersion(todos: Todo[], filter: Filter, today: string): string {
+  const rows = todos.map((t) => [
+    t.id,
+    t.title,
+    t.notes,
+    t.assignee_id,
+    t.assignee_name,
+    t.assignee_colour,
+    t.due_date,
+    t.completed_at,
+  ])
+
+  return createHash('sha256')
+    .update(JSON.stringify([rows, filter, today]))
+    .digest('base64url')
+    .slice(0, 22)
 }
 
 export function splitTodos(todos: Todo[]): { open: Todo[]; done: Todo[] } {

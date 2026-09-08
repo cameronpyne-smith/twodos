@@ -27,6 +27,7 @@ import {
   listTodos,
   parseFilter,
   splitTodos,
+  todoVersion,
   toggleTodo,
   updateTodo,
   type Filter,
@@ -88,10 +89,18 @@ app.use('*', async (c, next) => {
   await next()
 })
 
-async function todoProps(listId: string, userId: string, filter: Filter): Promise<TodoListProps> {
+const doneOpen = (c: Context) => c.req.query('done') === '1'
+
+async function todoProps(
+  listId: string,
+  userId: string,
+  filter: Filter,
+  done_open: boolean,
+): Promise<TodoListProps> {
   const todos = await listTodos(listId)
   const unfinished = todos.filter((t) => t.completed_at === null)
   const { open, done } = splitTodos(applyFilter(todos, filter, userId))
+  const today = londonToday()
 
   return {
     listId,
@@ -99,7 +108,9 @@ async function todoProps(listId: string, userId: string, filter: Filter): Promis
     open,
     done,
     total: todos.length,
-    today: londonToday(),
+    today,
+    version: todoVersion(todos, filter, today),
+    doneOpen: done_open,
     counts: {
       all: unfinished.length,
       mine: applyFilter(unfinished, 'mine', userId).length,
@@ -114,6 +125,7 @@ const renderList = async (c: Context<Env>) => {
     c.get('list').id,
     c.get('user').id,
     parseFilter(c.req.query('filter')),
+    doneOpen(c),
   )
   return <TodoList {...props} />
 }
@@ -328,14 +340,24 @@ app.get('/list/:id', async (c) => {
   const list = c.get('list')
   const user = c.get('user')
   const [todos, lists, members] = await Promise.all([
-    todoProps(list.id, user.id, parseFilter(c.req.query('filter'))),
+    todoProps(list.id, user.id, parseFilter(c.req.query('filter')), doneOpen(c)),
     listsForUser(user.id),
     membersOfList(list.id),
   ])
   return c.html(<Page user={user} list={list} lists={lists} members={members} todos={todos} />)
 })
 
-app.get('/list/:id/todos', async (c) => c.html(await renderList(c)))
+app.get('/list/:id/todos', async (c) => {
+  const props = await todoProps(
+    c.get('list').id,
+    c.get('user').id,
+    parseFilter(c.req.query('filter')),
+    doneOpen(c),
+  )
+
+  if (c.req.header('X-Todo-Version') === props.version) return c.body(null, 204)
+  return c.html(<TodoList {...props} />)
+})
 
 app.post('/list/:id/todos', async (c) => {
   const body = await c.req.parseBody()
