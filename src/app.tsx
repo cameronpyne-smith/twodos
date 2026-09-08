@@ -43,6 +43,7 @@ import {
   listsForUser,
   membersOfList,
   peekInvite,
+  renameList,
   type List,
 } from './lists.js'
 import {
@@ -61,6 +62,7 @@ import {
 import {
   InviteLink,
   JoinPage,
+  ListName,
   NewListPage,
   Page,
   TodoEditRow,
@@ -482,6 +484,24 @@ app.post('/list/:id/todos/:todoId/field', async (c) => {
   })
 
   return c.body(null, 204)
+})
+
+app.post('/list/:id/name', async (c) => {
+  const list = c.get('list')
+  const body = await c.req.parseBody()
+  const name = field(body, 'name')
+
+  if (!name) return c.body(null, 422)
+
+  const renamed = name.slice(0, 60)
+  await renameList(list.id, renamed)
+
+  return c.html(
+    <>
+      <title>{`${renamed} · twodos`}</title>
+      <ListName name={renamed} />
+    </>,
+  )
 })
 
 app.post('/list/:id/invite', async (c) => {

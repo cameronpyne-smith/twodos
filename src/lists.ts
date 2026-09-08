@@ -45,6 +45,10 @@ export async function createList(name: string, userId: string): Promise<List> {
   return list
 }
 
+export async function renameList(listId: string, name: string): Promise<void> {
+  await sql()`update lists set name = ${name} where id = ${listId}`
+}
+
 export async function membersOfList(listId: string): Promise<User[]> {
   return (await sql()`
     select u.id, u.email, u.display_name, u.colour

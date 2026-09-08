@@ -2,12 +2,13 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.6 — due date column.** Accounts, multiple lists,
-membership and single-use invite links. Todos carry an assignee, a due date and notes, all
-settable as you add them, with the due date in a column down the right edge, overdue highlighting
-and filter chips. Each person has a colour shown as an edge bar on the todos assigned to them,
-and any todo can be flagged important, which floats it to the top. Done items collapse into a group that hides after 24 hours, and
-ticking one plays a short ding.
+**Current state: Milestone 3.7 — list settings menu.** Accounts, multiple lists, membership and
+single-use invite links, with rename and sharing behind a cog in the header. Todos carry an
+assignee, a due date and notes, all settable as you add them, with the due date in a column down
+the right edge, overdue highlighting and filter chips. Each person has a colour shown as an edge
+bar on the todos assigned to them, and any todo can be flagged important, which floats it to the
+top. Done items collapse into a group that hides after 24 hours, and ticking one plays a short
+ding.
 
 ## Stack
 
@@ -109,6 +110,26 @@ nothing.
 
 Navigation is one list at a time at `/list/:id`, with a switcher in the header. Each list
 is a separate context, so there is no way to post to the wrong one by mistake.
+
+**List settings live behind a cog beside the name**, not in a panel at the foot of the list.
+Sharing sat at the bottom of every page whether or not anyone was thinking about sharing, which
+spent permanent screen space on a rare action; behind the cog it costs nothing until asked for,
+and the foot of the list is free for the done group and its divider.
+
+The cog and the switcher are both plain `<details>` elements carrying the same `name="header"`,
+which makes the browser treat them as one accordion — opening either closes the other, with no
+JavaScript. On a browser too old for it (before Firefox 130) both simply open at once, which is
+what they did before, so nothing breaks.
+
+Renaming commits on `change` and flashes the field, the same contract as the todo editor. The
+response carries a `<span id="list-name">` that htmx swaps into the switcher heading and a
+`<title>` that htmx applies to the browser tab, so the name updates in two places without the
+dropdown closing. An empty name is a 422: nothing is written and the field rings red.
+
+The header is not inside the polled region, so if the other person renames the list or joins it,
+your header stays as it was until you reload. That was true of the old sharing panel too and is
+accepted rather than fixed: making it live would mean folding the list name into the todo content
+hash so a rename could bust it, which is real machinery for something two people do once.
 
 **Every list-scoped route is guarded by membership**, and `list_id` is part of the `WHERE`
 clause on every todo query — so a todo id from one list cannot be read, ticked or deleted

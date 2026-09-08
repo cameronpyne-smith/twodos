@@ -46,6 +46,12 @@ const CLOSE = [
 
 const FLASH_RESET = "event.target.classList.remove('ok', 'bad')"
 
+const FIELD_FLASH = [
+  "this.classList.remove('ok', 'bad');",
+  'void this.offsetWidth;',
+  "this.classList.add(event.detail.successful ? 'ok' : 'bad');",
+].join(' ')
+
 const FLASH = [
   'const f = event.detail.requestConfig?.triggeringEvent?.target;',
   'if (f && f.form === this && f.name) {',
@@ -386,12 +392,18 @@ export const TodoList: FC<TodoListProps> = ({
   </div>
 )
 
+export const ListName: FC<{ name: string }> = ({ name }) => (
+  <span id="list-name">{name}</span>
+)
+
 const ListSwitcher: FC<{ current: List; lists: List[] }> = ({ current, lists }) => {
   const others = lists.filter((l) => l.id !== current.id)
 
   return (
-    <details class="switcher">
-      <summary>{current.name}</summary>
+    <details class="switcher" name="header">
+      <summary>
+        <ListName name={current.name} />
+      </summary>
       <nav>
         {others.map((l) => (
           <a key={l.id} href={`/list/${l.id}`}>
@@ -413,27 +425,62 @@ export const InviteLink: FC<{ url: string }> = ({ url }) => (
   </div>
 )
 
-export const SharePanel: FC<{ list: List; members: User[] }> = ({ list, members }) => (
-  <details class="share">
-    <summary>
-      Sharing <span class="count">{members.length}</span>
-    </summary>
-    <ul class="members">
-      {members.map((m) => (
-        <li key={m.id} class={`who-${asColour(m.colour)}`}>
-          {m.display_name}
-        </li>
-      ))}
-    </ul>
-    <div id="invite">
-      <button
-        type="button"
-        hx-post={`/list/${list.id}/invite`}
-        hx-target="#invite"
-        hx-swap="outerHTML"
+const SettingsMenu: FC<{ list: List; members: User[] }> = ({ list, members }) => (
+  <details class="settings" name="header">
+    <summary aria-label="List settings">
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
       >
-        Create invite link
-      </button>
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      </svg>
+    </summary>
+
+    <div class="menu fields">
+      <label>
+        Name
+        <input
+          type="text"
+          name="name"
+          value={list.name}
+          maxlength={60}
+          autocomplete="off"
+          hx-post={`/list/${list.id}/name`}
+          hx-trigger="change"
+          hx-target="#list-name"
+          hx-swap="outerHTML"
+          hx-on--after-request={FIELD_FLASH}
+        />
+      </label>
+
+      <div class="sharing">
+        <p class="menu-label">Sharing</p>
+        <ul class="members">
+          {members.map((m) => (
+            <li key={m.id} class={`who-${asColour(m.colour)}`}>
+              {m.display_name}
+            </li>
+          ))}
+        </ul>
+        <div id="invite">
+          <button
+            type="button"
+            hx-post={`/list/${list.id}/invite`}
+            hx-target="#invite"
+            hx-swap="outerHTML"
+          >
+            Create invite link
+          </button>
+        </div>
+      </div>
     </div>
   </details>
 )
@@ -447,7 +494,10 @@ export const Page: FC<{
 }> = ({ user, list, lists, members, todos }) => (
   <Layout title={`${list.name} · twodos`}>
     <header class="app-header">
-      <ListSwitcher current={list} lists={lists} />
+      <div class="heading">
+        <ListSwitcher current={list} lists={lists} />
+        <SettingsMenu list={list} members={members} />
+      </div>
       <div class="who">
         <a href="/profile">{user.display_name}</a>
         <form method="post" action="/logout">
@@ -462,8 +512,6 @@ export const Page: FC<{
       <AddForm listId={list.id} filter={todos.filter} members={members} />
 
       <TodoList {...todos} />
-
-      <SharePanel list={list} members={members} />
     </main>
   </Layout>
 )

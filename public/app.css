@@ -221,7 +221,9 @@ button:focus-visible {
 }
 
 .done-group {
-  margin-top: 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
 }
 
 .done-group summary {
@@ -377,8 +379,16 @@ button.link:hover {
   color: var(--accent);
 }
 
-.switcher {
+.heading {
   position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.switcher {
+  min-width: 0;
 }
 
 .switcher summary {
@@ -399,19 +409,28 @@ button.link:hover {
   color: var(--muted);
 }
 
-.switcher nav {
+.switcher nav,
+.settings .menu {
   position: absolute;
   z-index: 10;
   top: 100%;
   left: 0;
-  min-width: 12rem;
   margin-top: 0.4rem;
   display: flex;
   flex-direction: column;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+
+.switcher nav {
+  min-width: 12rem;
   overflow: hidden;
+}
+
+.settings .menu {
+  width: min(20rem, calc(100vw - 2rem));
+  padding: 0.9rem;
 }
 
 .switcher nav a {
@@ -430,20 +449,35 @@ button.link:hover {
   color: var(--muted);
 }
 
-.share {
-  margin-top: 2.5rem;
-  padding-top: 1.25rem;
+.settings summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings summary:hover,
+.settings[open] summary {
+  color: var(--text);
+}
+
+.settings .sharing {
+  padding-top: 0.85rem;
   border-top: 1px solid var(--border);
 }
 
-.share summary {
-  font-size: 0.85rem;
+.menu-label {
+  margin: 0;
+  font-size: 0.78rem;
   color: var(--muted);
-  cursor: pointer;
-}
-
-.share .count {
-  opacity: 0.7;
 }
 
 .members {
@@ -459,12 +493,12 @@ button.link:hover {
   padding: 0.25rem 0.6rem;
   font-size: 0.82rem;
   color: var(--muted);
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 999px;
 }
 
-.share button {
+.settings .sharing button {
   min-height: var(--tap);
   padding: 0 1rem;
   font: inherit;
@@ -716,7 +750,7 @@ button.link:hover {
 
 .members li[class*='who-'] {
   color: var(--who);
-  background: color-mix(in srgb, var(--who) 12%, var(--surface));
+  background: color-mix(in srgb, var(--who) 12%, var(--bg));
   border-color: color-mix(in srgb, var(--who) 45%, var(--border));
 }
 
