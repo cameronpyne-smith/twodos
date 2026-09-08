@@ -752,3 +752,63 @@ button.link:hover {
   border-color: var(--who);
   box-shadow: inset 0 0 0 1px var(--who);
 }
+
+:root {
+  --imp: #c99700;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --imp: #ffd54d;
+  }
+}
+
+.todo.important .title {
+  font-weight: 650;
+}
+
+.bang {
+  display: inline-block;
+  margin-right: 0.35rem;
+  font-size: 1em;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--imp);
+  vertical-align: baseline;
+  animation: imp-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes imp-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.16); opacity: 0.72; }
+}
+
+.done .bang {
+  color: var(--muted);
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bang {
+    animation: none;
+  }
+}
+
+.todo.editing label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.todo.editing input[type='checkbox'] {
+  flex: none;
+  width: 1.15rem;
+  height: 1.15rem;
+  min-height: 0;
+  padding: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

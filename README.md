@@ -2,10 +2,11 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.1 — user colours.** Accounts, multiple lists, membership and
+**Current state: Milestone 3.2 — important flag.** Accounts, multiple lists, membership and
 single-use invite links. Todos carry an assignee, a due date and notes, with overdue
 highlighting and filter chips. Each person has a colour, shown as an edge bar on the todos
-assigned to them. Done items collapse into a group that hides after 24 hours.
+assigned to them, and any todo can be flagged important, which floats it to the top.
+Done items collapse into a group that hides after 24 hours.
 
 ## Stack
 
@@ -148,6 +149,51 @@ a form someone is halfway through.
 
 Assignee and due date are validated server-side: an assignee must be a member of the list,
 which stops a tampered form assigning a todo to an arbitrary user id.
+
+## Ordering
+
+One `ORDER BY` produces both groups, and it is a **total order**:
+
+```sql
+order by (t.completed_at is not null),   -- open before done
+         t.completed_at desc,            -- done: newest completed first
+         t.important desc,               -- important first
+         t.due_date asc nulls last,      -- then soonest due, undated last
+         t.created_at desc,              -- then newest
+         t.id                            -- total order
+```
+
+`t.id` is not decoration. Row order feeds the content hash (see Staying live), so if two rows
+could tie on every other key, Postgres would be free to return them in either order and the
+list would swap every ten seconds forever. Ties are reachable: `now()` is **transaction-scoped**
+in Postgres, so any multi-row insert in one transaction gives every row an identical
+`created_at`.
+
+`important` sits *after* `completed_at desc`, so a completed important item does not jump to the
+top of the Done group — Done is a record of what happened, not a priority list.
+
+**Timestamps are read as UTC ISO text** via `to_char`, like `due_date`. They previously came back
+as `Date` objects while typed as `string`, and the Done group was sorted with
+`String(completed_at).localeCompare(...)` — which on `"Tue Sep 08 2026 …"` sorts by **day-of-week
+alphabetically**. The declared types were lying, so nothing caught it. Ordering now happens
+entirely in SQL and `splitTodos` only partitions.
+
+## Important
+
+`todos.important`, a boolean, set from a tick box in the edit form. It is a **sort key rather
+than a section**: it sits above the due-date terms, so important todos rise to the top and are
+ordered among themselves by exactly the same rule as everything else — due date first, newest
+created for the undated. No extra markup, no empty-state question, and the rule is stated once.
+
+It shows as a **yellow `!`** before the title, at the title's own font size so it is exactly as
+tall as a capital letter, with the weight rather than the size carrying the emphasis. It pulses
+gently, stops pulsing under `prefers-reduced-motion`, and goes muted and still once the item is
+done.
+
+Worth recording that this was chosen over a neutral star knowing the cost: **yellow cannot be
+yellow on a light ground**, so light mode uses a dark gold (`#c99700`) and only dark mode gets
+the real `#ffd54d`. That gold also sits near the `amber` user colour. Both were judged acceptable
+for how much more noticeable it is, on a list where an important item is rare.
 
 ## Staying live
 

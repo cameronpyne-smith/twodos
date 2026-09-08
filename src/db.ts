@@ -6,6 +6,7 @@ export type Todo = {
   id: string
   title: string
   notes: string | null
+  important: boolean
   assignee_id: string | null
   assignee_name: string | null
   assignee_colour: string | null
@@ -19,6 +20,7 @@ export type TodoFields = {
   notes: string | null
   assigneeId: string | null
   dueDate: string | null
+  important: boolean
 }
 
 export const FILTERS = ['all', 'mine', 'theirs', 'unassigned'] as const
@@ -51,6 +53,7 @@ export function todoVersion(todos: Todo[], filter: Filter, today: string): strin
     t.id,
     t.title,
     t.notes,
+    t.important,
     t.assignee_id,
     t.assignee_name,
     t.assignee_colour,
@@ -67,34 +70,39 @@ export function todoVersion(todos: Todo[], filter: Filter, today: string): strin
 export function splitTodos(todos: Todo[]): { open: Todo[]; done: Todo[] } {
   return {
     open: todos.filter((t) => t.completed_at === null),
-    done: todos
-      .filter((t) => t.completed_at !== null)
-      .sort((a, b) => String(b.completed_at).localeCompare(String(a.completed_at))),
+    done: todos.filter((t) => t.completed_at !== null),
   }
 }
 
 export async function listTodos(listId: string): Promise<Todo[]> {
   return (await sql()`
-    select t.id, t.title, t.notes, t.assignee_id,
+    select t.id, t.title, t.notes, t.important, t.assignee_id,
            u.display_name as assignee_name, u.colour as assignee_colour,
            to_char(t.due_date, 'YYYY-MM-DD') as due_date,
-           t.completed_at, t.created_at
+           to_char(t.completed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as completed_at,
+           to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from todos t
     left join memberships m on m.user_id = t.assignee_id and m.list_id = t.list_id
     left join users u on u.id = m.user_id
     where t.list_id = ${listId}
       and t.deleted_at is null
       and (t.completed_at is null or t.completed_at > now() - interval '24 hours')
-    order by t.due_date asc nulls last, t.created_at desc
+    order by (t.completed_at is not null),
+             t.completed_at desc,
+             t.important desc,
+             t.due_date asc nulls last,
+             t.created_at desc,
+             t.id
   `) as Todo[]
 }
 
 export async function findTodo(listId: string, id: string): Promise<Todo | null> {
   const rows = (await sql()`
-    select t.id, t.title, t.notes, t.assignee_id,
+    select t.id, t.title, t.notes, t.important, t.assignee_id,
            u.display_name as assignee_name, u.colour as assignee_colour,
            to_char(t.due_date, 'YYYY-MM-DD') as due_date,
-           t.completed_at, t.created_at
+           to_char(t.completed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as completed_at,
+           to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from todos t
     left join memberships m on m.user_id = t.assignee_id and m.list_id = t.list_id
     left join users u on u.id = m.user_id
@@ -115,7 +123,8 @@ export async function updateTodo(listId: string, id: string, fields: TodoFields)
     set title       = ${fields.title},
         notes       = ${fields.notes},
         assignee_id = ${fields.assigneeId}::uuid,
-        due_date    = ${fields.dueDate}::date
+        due_date    = ${fields.dueDate}::date,
+        important   = ${fields.important}
     where id = ${id} and list_id = ${listId} and deleted_at is null
   `
 }

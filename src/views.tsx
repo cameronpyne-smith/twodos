@@ -47,6 +47,7 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
   const classes = ['todo']
   if (todo.completed_at) classes.push('done')
   if (overdue) classes.push('overdue')
+  if (todo.important) classes.push('important')
   if (todo.assignee_colour) classes.push(`who-${asColour(todo.assignee_colour)}`)
 
   return (
@@ -60,7 +61,14 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
       >
         <span class="box" aria-hidden="true"></span>
         <span class="body">
-          <span class="title">{todo.title}</span>
+          <span class="title">
+            {todo.important && (
+              <span class="bang" role="img" aria-label="Important">
+                !
+              </span>
+            )}
+            {todo.title}
+          </span>
           {(todo.due_date || todo.assignee_name || todo.notes) && (
             <span class="meta">
               {todo.due_date && (
@@ -128,6 +136,11 @@ export const TodoEditRow: FC<{
           <textarea name="notes" rows={2} maxlength={2000}>
             {todo.notes ?? ''}
           </textarea>
+        </label>
+
+        <label class="check">
+          <input type="checkbox" name="important" checked={todo.important} />
+          Important
         </label>
 
         <div class="pair">

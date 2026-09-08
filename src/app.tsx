@@ -419,6 +419,7 @@ app.post('/list/:id/todos/:todoId', async (c) => {
   const notes = field(body, 'notes')
   const dueDate = field(body, 'due_date')
   const assigneeId = field(body, 'assignee_id')
+  const important = body['important'] !== undefined
 
   const members = await membersOfList(list.id)
   const problem = !title
@@ -446,6 +447,7 @@ app.post('/list/:id/todos/:todoId', async (c) => {
     notes: notes ? notes.slice(0, 2000) : null,
     assigneeId: assigneeId || null,
     dueDate: dueDate || null,
+    important,
   })
 
   const saved = await findTodo(list.id, todoId)
