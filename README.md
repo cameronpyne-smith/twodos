@@ -2,11 +2,11 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.2 — important flag.** Accounts, multiple lists, membership and
-single-use invite links. Todos carry an assignee, a due date and notes, with overdue
-highlighting and filter chips. Each person has a colour, shown as an edge bar on the todos
-assigned to them, and any todo can be flagged important, which floats it to the top.
-Done items collapse into a group that hides after 24 hours.
+**Current state: Milestone 3.3 — row layout and add flow.** Accounts, multiple lists,
+membership and single-use invite links. Todos carry an assignee, a due date and notes, all
+settable as you add them, with overdue highlighting and filter chips. Each person has a colour,
+shown as an edge bar on the todos assigned to them, and any todo can be flagged important,
+which floats it to the top. Done items collapse into a group that hides after 24 hours.
 
 ## Stack
 
@@ -155,17 +155,26 @@ buttons past the edge of a row that is `overflow: hidden`, making them unreachab
 scroll to recover them. Titles get `overflow-wrap: anywhere` for the same reason, so a
 pasted booking URL wraps instead of being clipped.
 
-**Adding opens the editor.** Adding a todo returns the list with that todo **hoisted out of
-sort order** and rendered as a form in the first row, so options can be set immediately. The
-hoist is necessary rather than cosmetic: a new todo has no due date and is not important, so
-it sorts below every dated and every important item and would otherwise appear well down the
-list, or not at all under a Mine/Theirs filter. Focus stays in the add box, so a burst still
-works — each ⏎ collapses the previous form and opens one for the newest todo. Cancel keeps
-the todo and collapses it to a row; the add was the commit point.
+**Adding sets every attribute at once.** The add form carries the same fields as the edit
+form — important, due date, assignee, notes — hidden until the form has focus and revealed by
+`.add:focus-within`. That is the whole mechanism: **no JavaScript and no state**. Focus the
+title box and the options are there to set before submitting, so nothing has to be created and
+then edited.
 
-`editingId` is part of the version hash, which is what makes the row settle into place: Save
-and Cancel both fire `twodos:refresh`, and because the poll route computes its version without
-an `editingId`, the hashes differ and the list re-renders sorted instead of returning 204.
+A burst still costs one keystroke per item: `this.reset()` clears the extra fields along with
+the title, and focus returns to the title box, which keeps the panel open for the next one.
+Because `:focus-within` covers descendants, tabbing into the due date or the assignee select
+keeps it open too, and a value set while the panel is open can never be submitted invisibly —
+reaching the title box or the Add button re-reveals the panel that holds it.
+
+Both forms render one shared `.fields` block in the same order, so there is a single place to
+style a field and a single order to learn.
+
+Invalid values are **clamped, not rejected**: a date that isn't a date, or an assignee who
+isn't a member of the list, is dropped and the todo is still created. Neither is reachable
+through the UI — `type="date"` and a select of members see to that — so the only caller is a
+tampered request, and there is no error state worth designing for something nobody can do by
+accident. This mirrors `asColour()`, which validates and falls back rather than failing.
 
 Editing swaps a single row for a form (`hx-target="closest li"`) rather than navigating.
 Saving returns the fresh row and sets an `HX-Trigger-After-Swap: twodos:refresh` response header, so

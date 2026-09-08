@@ -106,7 +106,12 @@ export const TodoEditRow: FC<{
 
   return (
     <li class="todo editing">
-      <form hx-post={`${base}${query(filter)}`} hx-target="closest li" hx-swap="outerHTML">
+      <form
+        class="fields"
+        hx-post={`${base}${query(filter)}`}
+        hx-target="closest li"
+        hx-swap="outerHTML"
+      >
         {error && <p class="row-error">{error}</p>}
 
         <label>
@@ -119,13 +124,6 @@ export const TodoEditRow: FC<{
             autocomplete="off"
             required
           />
-        </label>
-
-        <label>
-          Notes
-          <textarea name="notes" rows={2} maxlength={2000}>
-            {todo.notes ?? ''}
-          </textarea>
         </label>
 
         <label class="check">
@@ -152,6 +150,13 @@ export const TodoEditRow: FC<{
             </select>
           </label>
         </div>
+
+        <label>
+          Notes
+          <textarea name="notes" rows={2} maxlength={2000}>
+            {todo.notes ?? ''}
+          </textarea>
+        </label>
 
         <div class="row-actions">
           <button type="submit">Save</button>
@@ -193,6 +198,62 @@ export const TodoEditRow: FC<{
   )
 }
 
+export const AddForm: FC<{ listId: string; filter: Filter; members: User[] }> = ({
+  listId,
+  filter,
+  members,
+}) => (
+  <form
+    class="add"
+    hx-post={`/list/${listId}/todos${query(filter)}`}
+    hx-target="#todo-list"
+    hx-swap="outerHTML"
+    hx-on--after-request="this.reset(); this.querySelector('input[name=title]').focus()"
+  >
+    <div class="add-row">
+      <input
+        type="text"
+        name="title"
+        placeholder="Add a todo"
+        autocomplete="off"
+        required
+        maxlength={500}
+      />
+      <button type="submit">Add</button>
+    </div>
+
+    <div class="add-extras fields">
+      <label class="check">
+        <input type="checkbox" name="important" />
+        Important
+      </label>
+
+      <div class="pair">
+        <label>
+          Due
+          <input type="date" name="due_date" />
+        </label>
+        <label>
+          Assignee
+          <select name="assignee_id">
+            <option value="">Anyone</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.display_name}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <label>
+        Notes
+        <textarea name="notes" rows={2} maxlength={2000}></textarea>
+      </label>
+    </div>
+  </form>
+)
+
 const Filters: FC<{ listId: string; filter: Filter; counts: Record<Filter, number> }> = ({
   listId,
   filter,
@@ -220,7 +281,6 @@ export type TodoListProps = {
   filter: Filter
   open: Todo[]
   done: Todo[]
-  editing: { todo: Todo; members: User[] } | null
   counts: Record<Filter, number>
   total: number
   today: string
@@ -233,7 +293,6 @@ export const TodoList: FC<TodoListProps> = ({
   filter,
   open,
   done,
-  editing,
   counts,
   total,
   today,
@@ -249,20 +308,12 @@ export const TodoList: FC<TodoListProps> = ({
   >
     {total > 0 && <Filters listId={listId} filter={filter} counts={counts} />}
 
-    {open.length === 0 && !editing ? (
+    {open.length === 0 ? (
       <p class="empty">
         {total === 0 ? 'Nothing to do. Suspicious.' : 'Nothing here with that filter.'}
       </p>
     ) : (
       <ul class="list">
-        {editing && (
-          <TodoEditRow
-            todo={editing.todo}
-            listId={listId}
-            filter={filter}
-            members={editing.members}
-          />
-        )}
         {open.map((t) => (
           <TodoRow key={t.id} todo={t} listId={listId} filter={filter} today={today} />
         ))}
@@ -357,23 +408,7 @@ export const Page: FC<{
     </header>
 
     <main hx-vals={DONE_STATE}>
-      <form
-        class="add"
-        hx-post={`/list/${list.id}/todos${query(todos.filter)}`}
-        hx-target="#todo-list"
-        hx-swap="outerHTML"
-        hx-on--after-request="this.reset(); this.querySelector('input').focus()"
-      >
-        <input
-          type="text"
-          name="title"
-          placeholder="Add a todo"
-          autocomplete="off"
-          required
-          maxlength={500}
-        />
-        <button type="submit">Add</button>
-      </form>
+      <AddForm listId={list.id} filter={todos.filter} members={members} />
 
       <TodoList {...todos} />
 

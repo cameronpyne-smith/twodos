@@ -55,11 +55,29 @@ main {
 
 .add {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.6rem;
   margin-bottom: 1.25rem;
 }
 
-.add input {
+.add-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.add .add-extras {
+  display: none;
+}
+
+.add:focus-within .add-extras {
+  display: flex;
+  padding: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.add-row input {
   flex: 1;
   min-height: var(--tap);
   padding: 0 0.85rem;
@@ -70,13 +88,13 @@ main {
   border-radius: var(--radius);
 }
 
-.add input:focus-visible,
+.add-row input:focus-visible,
 button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.add button {
+.add-row button {
   min-height: var(--tap);
   padding: 0 1.1rem;
   font: inherit;
@@ -525,13 +543,13 @@ button.link:hover {
   padding: 0.85rem;
 }
 
-.todo.editing form {
+.fields {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
 }
 
-.todo.editing label {
+.fields label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -539,9 +557,9 @@ button.link:hover {
   color: var(--muted);
 }
 
-.todo.editing input,
-.todo.editing textarea,
-.todo.editing select {
+.fields input,
+.fields textarea,
+.fields select {
   padding: 0.5rem 0.6rem;
   font: inherit;
   color: var(--text);
@@ -550,12 +568,12 @@ button.link:hover {
   border-radius: 8px;
 }
 
-.todo.editing input,
-.todo.editing select {
+.fields input,
+.fields select {
   min-height: 2.6rem;
 }
 
-.todo.editing textarea {
+.fields textarea {
   resize: vertical;
 }
 
@@ -799,7 +817,7 @@ button.link:hover {
   }
 }
 
-.todo.editing label.check {
+.fields label.check {
   flex-direction: row;
   align-items: center;
   gap: 0.5rem;
@@ -808,7 +826,7 @@ button.link:hover {
   cursor: pointer;
 }
 
-.todo.editing input[type='checkbox'] {
+.fields input[type='checkbox'] {
   flex: none;
   width: 1.15rem;
   height: 1.15rem;

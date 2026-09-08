@@ -96,26 +96,20 @@ async function todoProps(
   userId: string,
   filter: Filter,
   done_open: boolean,
-  editingId: string | null = null,
 ): Promise<TodoListProps> {
   const todos = await listTodos(listId)
   const unfinished = todos.filter((t) => t.completed_at === null)
   const { open, done } = splitTodos(applyFilter(todos, filter, userId))
   const today = londonToday()
 
-  const editingTodo = editingId
-    ? (unfinished.find((t) => t.id === editingId) ?? null)
-    : null
-
   return {
     listId,
     filter,
-    open: editingTodo ? open.filter((t) => t.id !== editingTodo.id) : open,
+    open,
     done,
-    editing: editingTodo ? { todo: editingTodo, members: await membersOfList(listId) } : null,
     total: todos.length,
     today,
-    version: todoVersion(todos, filter, today, editingTodo?.id ?? null),
+    version: todoVersion(todos, filter, today),
     doneOpen: done_open,
     counts: {
       all: unfinished.length,
@@ -126,13 +120,12 @@ async function todoProps(
   }
 }
 
-const renderList = async (c: Context<Env>, editingId: string | null = null) => {
+const renderList = async (c: Context<Env>) => {
   const props = await todoProps(
     c.get('list').id,
     c.get('user').id,
     parseFilter(c.req.query('filter')),
     doneOpen(c),
-    editingId,
   )
   return <TodoList {...props} />
 }
@@ -369,10 +362,24 @@ app.get('/list/:id/todos', async (c) => {
 app.post('/list/:id/todos', async (c) => {
   const body = await c.req.parseBody()
   const title = field(body, 'title')
-  const id = title
-    ? await createTodo(c.get('list').id, title.slice(0, 500), c.get('user').id)
-    : null
-  return c.html(await renderList(c, id))
+
+  if (title) {
+    const list = c.get('list')
+    const notes = field(body, 'notes')
+    const dueDate = field(body, 'due_date')
+    const assigneeId = field(body, 'assignee_id')
+    const members = await membersOfList(list.id)
+
+    await createTodo(list.id, c.get('user').id, {
+      title: title.slice(0, 500),
+      notes: notes ? notes.slice(0, 2000) : null,
+      assigneeId: members.some((m) => m.id === assigneeId) ? assigneeId : null,
+      dueDate: dueDate && isValidDate(dueDate) ? dueDate : null,
+      important: body['important'] !== undefined,
+    })
+  }
+
+  return c.html(await renderList(c))
 })
 
 app.post('/list/:id/todos/:todoId/toggle', async (c) => {
@@ -390,7 +397,6 @@ app.get('/list/:id/todos/:todoId/row', async (c) => {
   const todo = await findTodo(list.id, c.req.param('todoId'))
   if (!todo) return c.notFound()
 
-  c.header('HX-Trigger-After-Swap', 'twodos:refresh')
   return c.html(
     <TodoRow
       todo={todo}

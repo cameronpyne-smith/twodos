@@ -48,12 +48,7 @@ export function applyFilter(todos: Todo[], filter: Filter, userId: string): Todo
   }
 }
 
-export function todoVersion(
-  todos: Todo[],
-  filter: Filter,
-  today: string,
-  editingId: string | null,
-): string {
+export function todoVersion(todos: Todo[], filter: Filter, today: string): string {
   const rows = todos.map((t) => [
     t.id,
     t.title,
@@ -67,7 +62,7 @@ export function todoVersion(
   ])
 
   return createHash('sha256')
-    .update(JSON.stringify([rows, filter, today, editingId]))
+    .update(JSON.stringify([rows, filter, today]))
     .digest('base64url')
     .slice(0, 22)
 }
@@ -118,16 +113,14 @@ export async function findTodo(listId: string, id: string): Promise<Todo | null>
 
 export async function createTodo(
   listId: string,
-  title: string,
   createdBy: string,
-): Promise<string | null> {
-  const rows = (await sql()`
-    insert into todos (list_id, title, created_by)
-    values (${listId}, ${title}, ${createdBy})
-    returning id
-  `) as { id: string }[]
-
-  return rows[0]?.id ?? null
+  fields: TodoFields,
+): Promise<void> {
+  await sql()`
+    insert into todos (list_id, created_by, title, notes, assignee_id, due_date, important)
+    values (${listId}, ${createdBy}, ${fields.title}, ${fields.notes},
+            ${fields.assigneeId}::uuid, ${fields.dueDate}::date, ${fields.important})
+  `
 }
 
 export async function updateTodo(listId: string, id: string, fields: TodoFields): Promise<void> {
