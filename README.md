@@ -6,8 +6,7 @@ A shared todo app for couples and small groups.
 membership and single-use invite links. Todos carry an assignee, a due date and notes, all
 settable as you add them, with the due date in a column down the right edge, overdue highlighting
 and filter chips. Each person has a colour shown as an edge bar on the todos assigned to them,
-and any todo can be flagged important,
-which floats it to the top. Done items collapse into a group that hides after 24 hours, and
+and any todo can be flagged important, which floats it to the top. Done items collapse into a group that hides after 24 hours, and
 ticking one plays a short ding.
 
 ## Stack
