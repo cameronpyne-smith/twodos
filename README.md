@@ -271,15 +271,20 @@ Ticking an open todo plays a short ding. It is **synthesised in the browser**, n
 license, nothing to cache, no second request, and every property of the sound is a number in the
 source rather than a recording someone has to go and find.
 
-**One note**, C6, with quiet partials an octave and a twelfth above it for a little bell shimmer,
-each partial decaying faster than the one below as a struck object's do. A lowpass at 6kHz rolls
-off the top so it reads as soft rather than piercing, and the rise is 6ms rather than instant,
+**One note**, F5 at 700Hz, with quiet partials an octave and a twelfth above it for bell shimmer,
+each partial decaying faster than the one below as a struck object's do. The tail runs 620ms, the
+lowpass sits at 9.4kHz so almost nothing is trimmed, and the rise is 6ms rather than instant,
 which is what keeps it from clicking. A two-note version was tried first and sounded like an
 announcement rather than a tick.
 
-The five numbers that decide how it sounds sit in a `DING` object at the top of the file: pitch,
-partial list, decay, cutoff and volume. Retuning it is editing those, not finding another
-recording.
+Every number that decides how it sounds sits in a `DING` object at the top of the file: pitch,
+partial list, decay, cutoff, shimmer and volume. `shimmer` scales only the partials above the
+fundamental, so it moves the sound between pure tone and struck bell without touching its pitch or
+loudness. Retuning is editing those six values, not finding another recording.
+
+They were chosen by ear against five other candidates, which is the only way this can be done —
+the timbre cannot be reasoned to from a description. The three peaks sum to 0.34, comfortably
+under the 1.0 where the output would clip.
 
 **It fires on the click, not on the response.** This is deliberate and has a cost: a toggle that
 fails on the server still dings. It buys two things. The sound lands the instant you tap instead

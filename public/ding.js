@@ -1,14 +1,15 @@
 ;(function () {
   const DING = {
-    freq: 1046.5,
+    freq: 700,
     partials: [
       [1, 1],
       [2, 0.22],
       [3, 0.07],
     ],
-    decay: 0.3,
-    cutoff: 6000,
-    volume: 0.15,
+    decay: 0.62,
+    cutoff: 9400,
+    shimmer: 1.3,
+    volume: 0.25,
   }
 
   let ctx
@@ -28,6 +29,7 @@
     for (const partial of DING.partials) {
       const ratio = partial[0]
       const decay = DING.decay / (1 + 0.4 * (ratio - 1))
+      const level = DING.volume * partial[1] * (ratio === 1 ? 1 : DING.shimmer)
       const osc = ctx.createOscillator()
       const amp = ctx.createGain()
 
@@ -35,7 +37,7 @@
       osc.frequency.value = DING.freq * ratio
 
       amp.gain.setValueAtTime(0.0001, at)
-      amp.gain.exponentialRampToValueAtTime(DING.volume * partial[1], at + 0.006)
+      amp.gain.exponentialRampToValueAtTime(level, at + 0.006)
       amp.gain.exponentialRampToValueAtTime(0.0001, at + decay)
 
       osc.connect(amp).connect(filter)
