@@ -60,6 +60,13 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
         hx-swap="outerHTML"
       >
         <span class="box" aria-hidden="true"></span>
+      </button>
+      <button
+        class="open"
+        hx-get={`${base}/edit${query(filter)}`}
+        hx-target="closest li"
+        hx-swap="outerHTML"
+      >
         <span class="body">
           <span class="title">
             {todo.important && (
@@ -81,25 +88,6 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
             </span>
           )}
         </span>
-      </button>
-      <button
-        class="edit"
-        aria-label="Edit"
-        hx-get={`${base}/edit${query(filter)}`}
-        hx-target="closest li"
-        hx-swap="outerHTML"
-      >
-        &#9998;
-      </button>
-      <button
-        class="remove"
-        aria-label="Delete"
-        hx-post={`${base}/delete${query(filter)}`}
-        hx-target="#todo-list"
-        hx-swap="outerHTML"
-        hx-confirm="Delete this todo?"
-      >
-        &times;
       </button>
     </li>
   )
@@ -173,6 +161,29 @@ export const TodoEditRow: FC<{
             hx-swap="outerHTML"
           >
             Cancel
+          </button>
+          <button
+            type="button"
+            class="remove"
+            aria-label="Delete"
+            hx-post={`${base}/delete${query(filter)}`}
+            hx-target="#todo-list"
+            hx-swap="outerHTML"
+            hx-confirm="Delete this todo?"
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7" />
+            </svg>
           </button>
         </div>
       </form>

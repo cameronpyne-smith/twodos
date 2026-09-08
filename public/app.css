@@ -107,12 +107,25 @@ button:focus-visible {
 }
 
 .tick {
-  flex: 1;
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  width: var(--tap);
   min-height: var(--tap);
-  padding: 0.6rem 0.85rem;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0.6rem 0.85rem 0.6rem 0;
   font: inherit;
   text-align: left;
   color: inherit;
@@ -139,18 +152,20 @@ button:focus-visible {
   text-decoration: line-through;
 }
 
-.remove {
-  flex: none;
+.row-actions .remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: var(--tap);
-  font-size: 1.25rem;
+  min-height: var(--tap);
+  margin-left: auto;
   color: var(--muted);
   background: none;
   border: 0;
-  border-left: 1px solid var(--border);
   cursor: pointer;
 }
 
-.remove:hover {
+.row-actions .remove:hover {
   color: var(--danger);
 }
 
@@ -463,6 +478,10 @@ button.link:hover {
   min-width: 0;
 }
 
+.title {
+  overflow-wrap: anywhere;
+}
+
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -485,6 +504,7 @@ button.link:hover {
 }
 
 .notes {
+  min-width: 0;
   max-width: 100%;
   color: var(--muted);
   white-space: nowrap;
@@ -498,21 +518,6 @@ button.link:hover {
 
 .done .meta {
   opacity: 0.6;
-}
-
-.edit {
-  flex: none;
-  width: var(--tap);
-  font-size: 1rem;
-  color: var(--muted);
-  background: none;
-  border: 0;
-  border-left: 1px solid var(--border);
-  cursor: pointer;
-}
-
-.edit:hover {
-  color: var(--text);
 }
 
 .todo.editing {
@@ -632,7 +637,7 @@ button.link:hover {
 }
 
 .todo[class*='who-'] .tick {
-  padding-left: 1.15rem;
+  padding-left: 4px;
 }
 
 .meta .chip.who {

@@ -141,9 +141,23 @@ the offset bugs the date-only choice exists to avoid. "Today" comes from one hel
 `src/dates.ts`, so overdue and the "Today / Tomorrow / Fri / 12 Sep" labels can never
 disagree.
 
+A row has exactly two controls: the checkbox toggles done, and tapping anywhere else opens
+the editor. Delete lives inside the editor, so the only destructive action in the list is
+two taps and a confirm away. Both controls are real `<button>`s and siblings rather than
+nested, which keeps them independently focusable.
+
+That shape exists because the row has to survive a narrow phone. Two 44px action buttons
+were spending a quarter of a 360px screen, and the row is a flex chain — `.open` → `.body`
+→ `.meta` → `.notes` — where **every level needs `min-width: 0`**. Miss one and its
+`min-width: auto` floors that level at its content's min-content width; since `.notes` is
+`white-space: nowrap`, that floor is the whole note on one line, which pushed the action
+buttons past the edge of a row that is `overflow: hidden`, making them unreachable with no
+scroll to recover them. Titles get `overflow-wrap: anywhere` for the same reason, so a
+pasted booking URL wraps instead of being clipped.
+
 Editing swaps a single row for a form (`hx-target="closest li"`) rather than navigating.
 Saving returns the fresh row and sets an `HX-Trigger-After-Swap: twodos:refresh` response header, so
-the surrounding list re-renders and picks up any change in due-date ordering. The 30-second
+the surrounding list re-renders and picks up any change in due-date ordering. The 10-second
 background poll is filtered on `!document.querySelector('.editing')` so it cannot wipe out
 a form someone is halfway through.
 
