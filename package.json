@@ -7,6 +7,7 @@
     "build": "tsx scripts/build.ts",
     "dev": "tsx watch src/dev.ts",
     "migrate": "tsx scripts/migrate.ts",
+    "migrate:prod": "tsx scripts/migrate.ts --prod",
     "vendor": "tsx scripts/vendor.ts",
     "typecheck": "tsc --noEmit"
   },

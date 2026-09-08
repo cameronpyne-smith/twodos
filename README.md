@@ -2,9 +2,9 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 2 — lists and invites.** Accounts, multiple lists, membership,
-and single-use invite links. Add, tick, untick and delete todos within a list. Done items
-collapse into a group that hides after 24 hours.
+**Current state: Milestone 3 — todo fields.** Accounts, multiple lists, membership and
+single-use invite links. Todos carry an assignee, a due date and notes, with overdue
+highlighting and filter chips. Done items collapse into a group that hides after 24 hours.
 
 ## Stack
 
@@ -22,9 +22,10 @@ src/auth.ts         Password hashing, session cookies, route guard
 src/users.ts        User, reset-token and login-attempt queries
 src/lists.ts        List, membership and invite queries
 src/email.ts        Password-reset email over SMTP
-src/views.tsx       Server-rendered JSX (Layout, Page, TodoList)
+src/views.tsx       Server-rendered JSX (Layout, Page, TodoList, TodoRow)
 src/auth-views.tsx  Sign in, sign up, forgot and reset pages
-src/db.ts           Todo queries
+src/db.ts           Todo queries, filtering, overdue test
+src/dates.ts        Europe/London date handling and due-date formatting
 src/sql.ts          Lazy Neon connection
 src/vercel.ts       Production entry point (Node request listener)
 src/dev.ts          Local dev server, serves public/ and the app
@@ -38,16 +39,18 @@ public/             Static assets (app.css, htmx.min.js)
 ## Setup
 
 **1. Create a Neon database** at <https://neon.tech>. Free tier, no card required.
-Copy the pooled connection string.
 
-**2. Configure:**
+**2. Create a `dev` branch** — Neon console → Branches → New branch, from `main`.
+Local development must never point at production data; see [Environments](#environments).
+
+**3. Configure:**
 
 ```sh
 cp .env.example .env.local
-# paste the connection string into DATABASE_URL
+# paste the dev branch's connection strings into DATABASE_URL and DATABASE_URL_POOLED
 ```
 
-**3. Install and migrate:**
+**4. Install and migrate:**
 
 ```sh
 npm install
@@ -55,7 +58,7 @@ npm run vendor    # only needed after htmx.org is updated
 npm run migrate
 ```
 
-**4. Run:**
+**5. Run:**
 
 ```sh
 npm run dev       # http://localhost:3000
@@ -114,6 +117,35 @@ invite email, which keeps the system's only email dependency the password reset.
 Opening an invite while signed out stores the token in a short-lived httpOnly cookie and
 redeems it after signup or login.
 
+## Todos
+
+| Field | Behaviour |
+|---|---|
+| `title` | Required |
+| `notes` | Optional free text |
+| `assignee_id` | Nullable — null means anyone, set means it is that person's |
+| `due_date` | Optional, date-only |
+
+A nullable assignee covers both "we need milk" and "you need to call the landlord" with
+one column, and the feature degrades to a plain shared list if ignored. Filter chips are
+All / Mine / Theirs / Anyone, counted over unfinished todos only.
+
+**Dates are date-only and the app timezone is hardcoded to `Europe/London`.** Due dates
+are read out of Postgres with `to_char(..., 'YYYY-MM-DD')` rather than as a `date`, because
+the driver would otherwise hand back a `Date` at local midnight and reintroduce exactly
+the offset bugs the date-only choice exists to avoid. "Today" comes from one helper in
+`src/dates.ts`, so overdue and the "Today / Tomorrow / Fri / 12 Sep" labels can never
+disagree.
+
+Editing swaps a single row for a form (`hx-target="closest li"`) rather than navigating.
+Saving returns the fresh row and sets an `HX-Trigger-After-Swap: twodos:refresh` response header, so
+the surrounding list re-renders and picks up any change in due-date ordering. The 30-second
+background poll is filtered on `!document.querySelector('.editing')` so it cannot wipe out
+a form someone is halfway through.
+
+Assignee and due date are validated server-side: an assignee must be a member of the list,
+which stops a tampered form assigning a todo to an arbitrary user id.
+
 ## Deploying
 
 Push to `main` and Vercel deploys automatically. Set these in the project's
@@ -141,13 +173,39 @@ npx vercel deploy --prebuilt --prod
 
 Vercel Hobby is free and requires no card, but forbids commercial use.
 
+## Environments
+
+Two Neon branches, one codebase.
+
+| | Branch | Connection strings live in |
+|---|---|---|
+| Local development | `dev` | `.env.local` (gitignored) |
+| Production | `main` | Vercel environment variables |
+
+A Neon branch is a copy-on-write fork of the database: creating one is instant and
+free, and writes to it never touch the parent. This is what keeps local testing —
+which creates and deletes throwaway accounts — out of real data.
+
+`npm run migrate` prints the host it is about to touch before applying anything, so
+a misconfigured `.env.local` is visible rather than silent. Migrations run against
+`dev` first. Production is migrated with `npm run migrate:prod`, which reads
+`.env.production.local` (also gitignored) instead — a separate file and a separate command,
+so touching production is always a deliberate act rather than a stale `.env.local`.
+
+The production deployment also sets `CANONICAL_HOST=twodos.pyne-smith.com`. Any
+request arriving on another host — the `*.vercel.app` URL, for instance — is
+308-redirected there, so invite and password-reset links only ever carry one origin.
+Set it in Vercel's **Production** environment only; setting it for previews would
+redirect every preview deployment to production.
+
 ## Commands
 
 | Command | Does |
 |---|---|
 | `npm run dev` | Local server with hot reload |
 | `npm run build` | Bundles the server into `.vercel/output` |
-| `npm run migrate` | Applies pending migrations, tracked in `_migrations` |
+| `npm run migrate` | Applies pending migrations to the `dev` branch, tracked in `_migrations` |
+| `npm run migrate:prod` | The same, against `.env.production.local` |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run vendor` | Re-copies `htmx.min.js` into `public/` |
 
@@ -159,5 +217,6 @@ Never edit a migration that has already been applied — add a new one.
 
 ## Next
 
-Milestone 1 is auth: signup, login, logout, login rate limiting, password reset.
+Milestone 4 is recurrence: a repeating todo rolls forward on the same row when
+completed, anchored either to its previous due date or to the completion date.
 See the design notes for the full sequence.

@@ -1,36 +1,106 @@
+import { londonToday } from './dates.js'
 import { sql } from './sql.js'
 
 export type Todo = {
   id: string
   title: string
+  notes: string | null
+  assignee_id: string | null
+  assignee_name: string | null
+  due_date: string | null
   completed_at: string | null
   created_at: string
 }
 
-export async function listTodos(listId: string): Promise<{ open: Todo[]; done: Todo[] }> {
-  const rows = (await sql()`
-    select id, title, completed_at, created_at
-    from todos
-    where list_id = ${listId}
-      and deleted_at is null
-      and (completed_at is null or completed_at > now() - interval '24 hours')
-    order by completed_at nulls first, created_at desc
-  `) as Todo[]
+export type TodoFields = {
+  title: string
+  notes: string | null
+  assigneeId: string | null
+  dueDate: string | null
+}
 
-  return {
-    open: rows.filter((t) => t.completed_at === null),
-    done: rows.filter((t) => t.completed_at !== null),
+export const FILTERS = ['all', 'mine', 'theirs', 'unassigned'] as const
+
+export type Filter = (typeof FILTERS)[number]
+
+export function parseFilter(value: string | undefined): Filter {
+  return FILTERS.includes(value as Filter) ? (value as Filter) : 'all'
+}
+
+export function isOverdue(todo: Todo, today: string = londonToday()): boolean {
+  return todo.completed_at === null && todo.due_date !== null && todo.due_date < today
+}
+
+export function applyFilter(todos: Todo[], filter: Filter, userId: string): Todo[] {
+  switch (filter) {
+    case 'mine':
+      return todos.filter((t) => t.assignee_id === userId)
+    case 'theirs':
+      return todos.filter((t) => t.assignee_id !== null && t.assignee_id !== userId)
+    case 'unassigned':
+      return todos.filter((t) => t.assignee_id === null)
+    default:
+      return todos
   }
 }
 
-export async function createTodo(listId: string, title: string): Promise<void> {
-  await sql()`insert into todos (list_id, title) values (${listId}, ${title})`
+export function splitTodos(todos: Todo[]): { open: Todo[]; done: Todo[] } {
+  return {
+    open: todos.filter((t) => t.completed_at === null),
+    done: todos
+      .filter((t) => t.completed_at !== null)
+      .sort((a, b) => String(b.completed_at).localeCompare(String(a.completed_at))),
+  }
 }
 
-export async function toggleTodo(listId: string, id: string): Promise<void> {
+export async function listTodos(listId: string): Promise<Todo[]> {
+  return (await sql()`
+    select t.id, t.title, t.notes, t.assignee_id, u.display_name as assignee_name,
+           to_char(t.due_date, 'YYYY-MM-DD') as due_date,
+           t.completed_at, t.created_at
+    from todos t
+    left join users u on u.id = t.assignee_id
+    where t.list_id = ${listId}
+      and t.deleted_at is null
+      and (t.completed_at is null or t.completed_at > now() - interval '24 hours')
+    order by t.due_date asc nulls last, t.created_at desc
+  `) as Todo[]
+}
+
+export async function findTodo(listId: string, id: string): Promise<Todo | null> {
+  const rows = (await sql()`
+    select t.id, t.title, t.notes, t.assignee_id, u.display_name as assignee_name,
+           to_char(t.due_date, 'YYYY-MM-DD') as due_date,
+           t.completed_at, t.created_at
+    from todos t
+    left join users u on u.id = t.assignee_id
+    where t.id = ${id} and t.list_id = ${listId} and t.deleted_at is null
+  `) as Todo[]
+  return rows[0] ?? null
+}
+
+export async function createTodo(listId: string, title: string, createdBy: string): Promise<void> {
+  await sql()`
+    insert into todos (list_id, title, created_by) values (${listId}, ${title}, ${createdBy})
+  `
+}
+
+export async function updateTodo(listId: string, id: string, fields: TodoFields): Promise<void> {
   await sql()`
     update todos
-    set completed_at = case when completed_at is null then now() else null end
+    set title       = ${fields.title},
+        notes       = ${fields.notes},
+        assignee_id = ${fields.assigneeId}::uuid,
+        due_date    = ${fields.dueDate}::date
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
+}
+
+export async function toggleTodo(listId: string, id: string, userId: string): Promise<void> {
+  await sql()`
+    update todos
+    set completed_at = case when completed_at is null then now() else null end,
+        completed_by = case when completed_at is null then ${userId}::uuid else null end
     where id = ${id} and list_id = ${listId} and deleted_at is null
   `
 }

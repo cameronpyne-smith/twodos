@@ -17,7 +17,19 @@ import {
   verifyPassword,
 } from './auth.js'
 import { ForgotPage, LoginPage, ResetPage, SignupPage } from './auth-views.js'
-import { createTodo, deleteTodo, listTodos, toggleTodo } from './db.js'
+import { isValidDate, londonToday } from './dates.js'
+import {
+  applyFilter,
+  createTodo,
+  deleteTodo,
+  findTodo,
+  listTodos,
+  parseFilter,
+  splitTodos,
+  toggleTodo,
+  updateTodo,
+  type Filter,
+} from './db.js'
 import { sendPasswordReset } from './email.js'
 import {
   acceptInvite,
@@ -42,7 +54,16 @@ import {
   updatePassword,
   type User,
 } from './users.js'
-import { InviteLink, JoinPage, NewListPage, Page, TodoList } from './views.js'
+import {
+  InviteLink,
+  JoinPage,
+  NewListPage,
+  Page,
+  TodoEditRow,
+  TodoList,
+  TodoRow,
+  type TodoListProps,
+} from './views.js'
 
 type Env = { Variables: { user: User; list: List } }
 
@@ -52,9 +73,46 @@ const INVITE_COOKIE = 'pending_invite'
 
 const field = (body: Record<string, unknown>, name: string) => String(body[name] ?? '').trim()
 
-const renderList = async (listId: string) => {
-  const { open, done } = await listTodos(listId)
-  return <TodoList open={open} done={done} listId={listId} />
+app.use('*', async (c, next) => {
+  const canonical = process.env.CANONICAL_HOST
+  const host = c.req.header('x-forwarded-host') ?? c.req.header('host')
+
+  if (canonical && host && host !== canonical) {
+    const url = new URL(c.req.url)
+    return c.redirect(`https://${canonical}${url.pathname}${url.search}`, 308)
+  }
+
+  await next()
+})
+
+async function todoProps(listId: string, userId: string, filter: Filter): Promise<TodoListProps> {
+  const todos = await listTodos(listId)
+  const unfinished = todos.filter((t) => t.completed_at === null)
+  const { open, done } = splitTodos(applyFilter(todos, filter, userId))
+
+  return {
+    listId,
+    filter,
+    open,
+    done,
+    total: todos.length,
+    today: londonToday(),
+    counts: {
+      all: unfinished.length,
+      mine: applyFilter(unfinished, 'mine', userId).length,
+      theirs: applyFilter(unfinished, 'theirs', userId).length,
+      unassigned: applyFilter(unfinished, 'unassigned', userId).length,
+    },
+  }
+}
+
+const renderList = async (c: Context<Env>) => {
+  const props = await todoProps(
+    c.get('list').id,
+    c.get('user').id,
+    parseFilter(c.req.query('filter')),
+  )
+  return <TodoList {...props} />
 }
 
 async function redeemPendingInvite(c: Context, userId: string) {
@@ -251,40 +309,111 @@ app.use('/list/:id/*', async (c, next) => {
 
 app.get('/list/:id', async (c) => {
   const list = c.get('list')
-  const [{ open, done }, lists, members] = await Promise.all([
-    listTodos(list.id),
-    listsForUser(c.get('user').id),
+  const user = c.get('user')
+  const [todos, lists, members] = await Promise.all([
+    todoProps(list.id, user.id, parseFilter(c.req.query('filter'))),
+    listsForUser(user.id),
     membersOfList(list.id),
   ])
-  return c.html(
-    <Page
-      open={open}
-      done={done}
-      user={c.get('user')}
-      list={list}
-      lists={lists}
-      members={members}
-    />,
-  )
+  return c.html(<Page user={user} list={list} lists={lists} members={members} todos={todos} />)
 })
 
-app.get('/list/:id/todos', async (c) => c.html(await renderList(c.get('list').id)))
+app.get('/list/:id/todos', async (c) => c.html(await renderList(c)))
 
 app.post('/list/:id/todos', async (c) => {
   const body = await c.req.parseBody()
   const title = field(body, 'title')
-  if (title) await createTodo(c.get('list').id, title.slice(0, 500))
-  return c.html(await renderList(c.get('list').id))
+  if (title) await createTodo(c.get('list').id, title.slice(0, 500), c.get('user').id)
+  return c.html(await renderList(c))
 })
 
 app.post('/list/:id/todos/:todoId/toggle', async (c) => {
-  await toggleTodo(c.get('list').id, c.req.param('todoId'))
-  return c.html(await renderList(c.get('list').id))
+  await toggleTodo(c.get('list').id, c.req.param('todoId'), c.get('user').id)
+  return c.html(await renderList(c))
 })
 
 app.post('/list/:id/todos/:todoId/delete', async (c) => {
   await deleteTodo(c.get('list').id, c.req.param('todoId'))
-  return c.html(await renderList(c.get('list').id))
+  return c.html(await renderList(c))
+})
+
+app.get('/list/:id/todos/:todoId/row', async (c) => {
+  const list = c.get('list')
+  const todo = await findTodo(list.id, c.req.param('todoId'))
+  if (!todo) return c.notFound()
+
+  return c.html(
+    <TodoRow
+      todo={todo}
+      listId={list.id}
+      filter={parseFilter(c.req.query('filter'))}
+      today={londonToday()}
+    />,
+  )
+})
+
+app.get('/list/:id/todos/:todoId/edit', async (c) => {
+  const list = c.get('list')
+  const todo = await findTodo(list.id, c.req.param('todoId'))
+  if (!todo) return c.notFound()
+
+  return c.html(
+    <TodoEditRow
+      todo={todo}
+      listId={list.id}
+      filter={parseFilter(c.req.query('filter'))}
+      members={await membersOfList(list.id)}
+    />,
+  )
+})
+
+app.post('/list/:id/todos/:todoId', async (c) => {
+  const list = c.get('list')
+  const todoId = c.req.param('todoId')
+  const filter = parseFilter(c.req.query('filter'))
+
+  const todo = await findTodo(list.id, todoId)
+  if (!todo) return c.notFound()
+
+  const body = await c.req.parseBody()
+  const title = field(body, 'title')
+  const notes = field(body, 'notes')
+  const dueDate = field(body, 'due_date')
+  const assigneeId = field(body, 'assignee_id')
+
+  const members = await membersOfList(list.id)
+  const problem = !title
+    ? 'A todo needs a title.'
+    : dueDate && !isValidDate(dueDate)
+      ? "That date doesn't look right."
+      : assigneeId && !members.some((m) => m.id === assigneeId)
+        ? 'That person is not on this list.'
+        : null
+
+  if (problem) {
+    return c.html(
+      <TodoEditRow
+        todo={todo}
+        listId={list.id}
+        filter={filter}
+        members={members}
+        error={problem}
+      />,
+    )
+  }
+
+  await updateTodo(list.id, todoId, {
+    title: title.slice(0, 500),
+    notes: notes ? notes.slice(0, 2000) : null,
+    assigneeId: assigneeId || null,
+    dueDate: dueDate || null,
+  })
+
+  const saved = await findTodo(list.id, todoId)
+  if (!saved) return c.notFound()
+
+  c.header('HX-Trigger-After-Swap', 'twodos:refresh')
+  return c.html(<TodoRow todo={saved} listId={list.id} filter={filter} today={londonToday()} />)
 })
 
 app.post('/list/:id/invite', async (c) => {

@@ -1,17 +1,29 @@
+import { existsSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { config } from 'dotenv'
 import pg from 'pg'
 
-config({ path: '.env.local', quiet: true })
+const production = process.argv.includes('--prod')
+const envFile = production ? '.env.production.local' : '.env.local'
+
+if (!existsSync(envFile)) {
+  console.error(`${envFile} does not exist.`)
+  process.exit(1)
+}
+
+config({ path: envFile, quiet: true })
 
 const MIGRATIONS_DIR = join(process.cwd(), 'migrations')
 
 const connectionString = process.env.DATABASE_URL ?? process.env.DATABASE_URL_POOLED
 if (!connectionString) {
-  console.error('DATABASE_URL is not set. Copy .env.example to .env.local and fill it in.')
+  console.error(`DATABASE_URL is not set in ${envFile}.`)
   process.exit(1)
 }
+
+const target = new URL(connectionString)
+console.log(`Target: ${target.hostname}${target.pathname}${production ? '  [PRODUCTION]' : ''}`)
 
 const client = new pg.Client({ connectionString })
 await client.connect()

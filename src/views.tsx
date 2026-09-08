@@ -1,5 +1,6 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
-import type { Todo } from './db.js'
+import { formatDue } from './dates.js'
+import { FILTERS, isOverdue, type Filter, type Todo } from './db.js'
 import type { List } from './lists.js'
 import type { User } from './users.js'
 
@@ -17,48 +18,205 @@ export const Layout: FC<PropsWithChildren<{ title: string }>> = ({ title, childr
   </html>
 )
 
-const TodoRow: FC<{ todo: Todo; listId: string }> = ({ todo, listId }) => (
-  <li class={todo.completed_at ? 'todo done' : 'todo'}>
-    <button
-      class="tick"
-      aria-label={todo.completed_at ? 'Mark as not done' : 'Mark as done'}
-      hx-post={`/list/${listId}/todos/${todo.id}/toggle`}
-      hx-target="#todo-list"
-      hx-swap="outerHTML"
-    >
-      <span class="box" aria-hidden="true"></span>
-      <span class="title">{todo.title}</span>
-    </button>
-    <button
-      class="remove"
-      aria-label="Delete"
-      hx-post={`/list/${listId}/todos/${todo.id}/delete`}
-      hx-target="#todo-list"
-      hx-swap="outerHTML"
-      hx-confirm="Delete this todo?"
-    >
-      &times;
-    </button>
-  </li>
+const FILTER_LABELS: Record<Filter, string> = {
+  all: 'All',
+  mine: 'Mine',
+  theirs: 'Theirs',
+  unassigned: 'Anyone',
+}
+
+const query = (filter: Filter) => (filter === 'all' ? '' : `?filter=${filter}`)
+
+const POLL =
+  "every 30s [document.visibilityState === 'visible' && !document.querySelector('.editing')], twodos:refresh from:body"
+
+export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: string }> = ({
+  todo,
+  listId,
+  filter,
+  today,
+}) => {
+  const overdue = isOverdue(todo, today)
+  const base = `/list/${listId}/todos/${todo.id}`
+  const classes = ['todo']
+  if (todo.completed_at) classes.push('done')
+  if (overdue) classes.push('overdue')
+
+  return (
+    <li class={classes.join(' ')}>
+      <button
+        class="tick"
+        aria-label={todo.completed_at ? 'Mark as not done' : 'Mark as done'}
+        hx-post={`${base}/toggle${query(filter)}`}
+        hx-target="#todo-list"
+        hx-swap="outerHTML"
+      >
+        <span class="box" aria-hidden="true"></span>
+        <span class="body">
+          <span class="title">{todo.title}</span>
+          {(todo.due_date || todo.assignee_name || todo.notes) && (
+            <span class="meta">
+              {todo.due_date && (
+                <span class={overdue ? 'chip due overdue' : 'chip due'}>
+                  {formatDue(todo.due_date, today)}
+                </span>
+              )}
+              {todo.assignee_name && <span class="chip who">{todo.assignee_name}</span>}
+              {todo.notes && <span class="notes">{todo.notes}</span>}
+            </span>
+          )}
+        </span>
+      </button>
+      <button
+        class="edit"
+        aria-label="Edit"
+        hx-get={`${base}/edit${query(filter)}`}
+        hx-target="closest li"
+        hx-swap="outerHTML"
+      >
+        &#9998;
+      </button>
+      <button
+        class="remove"
+        aria-label="Delete"
+        hx-post={`${base}/delete${query(filter)}`}
+        hx-target="#todo-list"
+        hx-swap="outerHTML"
+        hx-confirm="Delete this todo?"
+      >
+        &times;
+      </button>
+    </li>
+  )
+}
+
+export const TodoEditRow: FC<{
+  todo: Todo
+  listId: string
+  filter: Filter
+  members: User[]
+  error?: string
+}> = ({ todo, listId, filter, members, error }) => {
+  const base = `/list/${listId}/todos/${todo.id}`
+
+  return (
+    <li class="todo editing">
+      <form hx-post={`${base}${query(filter)}`} hx-target="#todo-list" hx-swap="outerHTML">
+        {error && <p class="row-error">{error}</p>}
+
+        <label>
+          Title
+          <input
+            type="text"
+            name="title"
+            value={todo.title}
+            maxlength={500}
+            autocomplete="off"
+            required
+          />
+        </label>
+
+        <label>
+          Notes
+          <textarea name="notes" rows={2} maxlength={2000}>
+            {todo.notes ?? ''}
+          </textarea>
+        </label>
+
+        <div class="pair">
+          <label>
+            Due
+            <input type="date" name="due_date" value={todo.due_date ?? ''} />
+          </label>
+          <label>
+            Assignee
+            <select name="assignee_id">
+              <option value="" selected={todo.assignee_id === null}>
+                Anyone
+              </option>
+              {members.map((m) => (
+                <option key={m.id} value={m.id} selected={m.id === todo.assignee_id}>
+                  {m.display_name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div class="row-actions">
+          <button type="submit">Save</button>
+          <button
+            type="button"
+            class="link"
+            hx-get={`${base}/row${query(filter)}`}
+            hx-target="closest li"
+            hx-swap="outerHTML"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </li>
+  )
+}
+
+const Filters: FC<{ listId: string; filter: Filter; counts: Record<Filter, number> }> = ({
+  listId,
+  filter,
+  counts,
+}) => (
+  <nav class="filters">
+    {FILTERS.map((f) => (
+      <button
+        key={f}
+        type="button"
+        class={f === filter ? 'chip filter active' : 'chip filter'}
+        aria-pressed={f === filter ? 'true' : 'false'}
+        hx-get={`/list/${listId}/todos${query(f)}`}
+        hx-target="#todo-list"
+        hx-swap="outerHTML"
+      >
+        {FILTER_LABELS[f]} <span class="count">{counts[f]}</span>
+      </button>
+    ))}
+  </nav>
 )
 
-export const TodoList: FC<{ open: Todo[]; done: Todo[]; listId: string }> = ({
+export type TodoListProps = {
+  listId: string
+  filter: Filter
+  open: Todo[]
+  done: Todo[]
+  counts: Record<Filter, number>
+  total: number
+  today: string
+}
+
+export const TodoList: FC<TodoListProps> = ({
+  listId,
+  filter,
   open,
   done,
-  listId,
+  counts,
+  total,
+  today,
 }) => (
   <div
     id="todo-list"
-    hx-get={`/list/${listId}/todos`}
-    hx-trigger="every 30s [document.visibilityState === 'visible']"
+    hx-get={`/list/${listId}/todos${query(filter)}`}
+    hx-trigger={POLL}
     hx-swap="outerHTML"
   >
+    {total > 0 && <Filters listId={listId} filter={filter} counts={counts} />}
+
     {open.length === 0 ? (
-      <p class="empty">Nothing to do. Suspicious.</p>
+      <p class="empty">
+        {total === 0 ? 'Nothing to do. Suspicious.' : 'Nothing here with that filter.'}
+      </p>
     ) : (
       <ul class="list">
         {open.map((t) => (
-          <TodoRow key={t.id} todo={t} listId={listId} />
+          <TodoRow key={t.id} todo={t} listId={listId} filter={filter} today={today} />
         ))}
       </ul>
     )}
@@ -70,7 +228,7 @@ export const TodoList: FC<{ open: Todo[]; done: Todo[]; listId: string }> = ({
         </summary>
         <ul class="list">
           {done.map((t) => (
-            <TodoRow key={t.id} todo={t} listId={listId} />
+            <TodoRow key={t.id} todo={t} listId={listId} filter={filter} today={today} />
           ))}
         </ul>
       </details>
@@ -129,13 +287,12 @@ export const SharePanel: FC<{ list: List; members: User[] }> = ({ list, members 
 )
 
 export const Page: FC<{
-  open: Todo[]
-  done: Todo[]
   user: User
   list: List
   lists: List[]
   members: User[]
-}> = ({ open, done, user, list, lists, members }) => (
+  todos: TodoListProps
+}> = ({ user, list, lists, members, todos }) => (
   <Layout title={`${list.name} · twodos`}>
     <header class="app-header">
       <ListSwitcher current={list} lists={lists} />
@@ -152,7 +309,7 @@ export const Page: FC<{
     <main>
       <form
         class="add"
-        hx-post={`/list/${list.id}/todos`}
+        hx-post={`/list/${list.id}/todos${query(todos.filter)}`}
         hx-target="#todo-list"
         hx-swap="outerHTML"
         hx-on--after-request="this.reset(); this.querySelector('input').focus()"
@@ -168,7 +325,7 @@ export const Page: FC<{
         <button type="submit">Add</button>
       </form>
 
-      <TodoList open={open} done={done} listId={list.id} />
+      <TodoList {...todos} />
 
       <SharePanel list={list} members={members} />
     </main>
