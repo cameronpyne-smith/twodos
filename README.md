@@ -7,7 +7,7 @@ membership and single-use invite links. Todos carry an assignee, a due date and 
 settable as you add them, with overdue highlighting and filter chips. Each person has a colour,
 shown as an edge bar on the todos assigned to them, and any todo can be flagged important,
 which floats it to the top. Done items collapse into a group that hides after 24 hours, and
-ticking a todo plays a short ding.
+ticking one plays a short ding.
 
 ## Stack
 
@@ -265,15 +265,21 @@ for how much more noticeable it is, on a list where an important item is rare.
 
 ## The completion sound
 
-Ticking an open todo plays a short two-note ding. It is **synthesised in the browser**, not a
-sound file: `public/ding.js` builds four sine oscillators through gain envelopes on a single
-`AudioContext`. That is around forty lines and no asset at all, which beats shipping an mp3 —
-nothing to license, nothing to cache, no second request, and the pitch and decay are tunable by
-editing two numbers rather than by finding a different recording.
+Ticking an open todo plays a short ding. It is **synthesised in the browser**, not a sound file:
+`public/ding.js` sums three sine partials through gain envelopes and a lowpass filter on a single
+`AudioContext`. That is sixty lines and no asset at all, which beats shipping an mp3 — nothing to
+license, nothing to cache, no second request, and every property of the sound is a number in the
+source rather than a recording someone has to go and find.
 
-Two notes a perfect fourth apart (B5 then E6), the second landing 85ms after the first, each with a
-quiet partial an octave above for a little bell shimmer and an exponential decay. The rise is 6ms
-rather than instant, which is what keeps it from clicking.
+**One note**, C6, with quiet partials an octave and a twelfth above it for a little bell shimmer,
+each partial decaying faster than the one below as a struck object's do. A lowpass at 6kHz rolls
+off the top so it reads as soft rather than piercing, and the rise is 6ms rather than instant,
+which is what keeps it from clicking. A two-note version was tried first and sounded like an
+announcement rather than a tick.
+
+The five numbers that decide how it sounds sit in a `DING` object at the top of the file: pitch,
+partial list, decay, cutoff and volume. Retuning it is editing those, not finding another
+recording.
 
 **It fires on the click, not on the response.** This is deliberate and has a cost: a toggle that
 fails on the server still dings. It buys two things. The sound lands the instant you tap instead
