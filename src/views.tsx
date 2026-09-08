@@ -1,4 +1,5 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
+import { asColour } from './colours.js'
 import { formatDue } from './dates.js'
 import { FILTERS, isOverdue, type Filter, type Todo } from './db.js'
 import type { List } from './lists.js'
@@ -41,6 +42,7 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
   const classes = ['todo']
   if (todo.completed_at) classes.push('done')
   if (overdue) classes.push('overdue')
+  if (todo.assignee_colour) classes.push(`who-${asColour(todo.assignee_colour)}`)
 
   return (
     <li class={classes.join(' ')}>
@@ -270,7 +272,9 @@ export const SharePanel: FC<{ list: List; members: User[] }> = ({ list, members 
     </summary>
     <ul class="members">
       {members.map((m) => (
-        <li key={m.id}>{m.display_name}</li>
+        <li key={m.id} class={`who-${asColour(m.colour)}`}>
+          {m.display_name}
+        </li>
       ))}
     </ul>
     <div id="invite">
@@ -297,7 +301,7 @@ export const Page: FC<{
     <header class="app-header">
       <ListSwitcher current={list} lists={lists} />
       <div class="who">
-        <span>{user.display_name}</span>
+        <a href="/profile">{user.display_name}</a>
         <form method="post" action="/logout">
           <button type="submit" class="link">
             Sign out

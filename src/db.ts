@@ -7,6 +7,7 @@ export type Todo = {
   notes: string | null
   assignee_id: string | null
   assignee_name: string | null
+  assignee_colour: string | null
   due_date: string | null
   completed_at: string | null
   created_at: string
@@ -55,11 +56,13 @@ export function splitTodos(todos: Todo[]): { open: Todo[]; done: Todo[] } {
 
 export async function listTodos(listId: string): Promise<Todo[]> {
   return (await sql()`
-    select t.id, t.title, t.notes, t.assignee_id, u.display_name as assignee_name,
+    select t.id, t.title, t.notes, t.assignee_id,
+           u.display_name as assignee_name, u.colour as assignee_colour,
            to_char(t.due_date, 'YYYY-MM-DD') as due_date,
            t.completed_at, t.created_at
     from todos t
-    left join users u on u.id = t.assignee_id
+    left join memberships m on m.user_id = t.assignee_id and m.list_id = t.list_id
+    left join users u on u.id = m.user_id
     where t.list_id = ${listId}
       and t.deleted_at is null
       and (t.completed_at is null or t.completed_at > now() - interval '24 hours')
@@ -69,11 +72,13 @@ export async function listTodos(listId: string): Promise<Todo[]> {
 
 export async function findTodo(listId: string, id: string): Promise<Todo | null> {
   const rows = (await sql()`
-    select t.id, t.title, t.notes, t.assignee_id, u.display_name as assignee_name,
+    select t.id, t.title, t.notes, t.assignee_id,
+           u.display_name as assignee_name, u.colour as assignee_colour,
            to_char(t.due_date, 'YYYY-MM-DD') as due_date,
            t.completed_at, t.created_at
     from todos t
-    left join users u on u.id = t.assignee_id
+    left join memberships m on m.user_id = t.assignee_id and m.list_id = t.list_id
+    left join users u on u.id = m.user_id
     where t.id = ${id} and t.list_id = ${listId} and t.deleted_at is null
   `) as Todo[]
   return rows[0] ?? null

@@ -17,6 +17,7 @@ import {
   verifyPassword,
 } from './auth.js'
 import { ForgotPage, LoginPage, ResetPage, SignupPage } from './auth-views.js'
+import { isColour } from './colours.js'
 import { isValidDate, londonToday } from './dates.js'
 import {
   applyFilter,
@@ -31,6 +32,7 @@ import {
   type Filter,
 } from './db.js'
 import { sendPasswordReset } from './email.js'
+import { ColourPicker, ProfilePage } from './profile-views.js'
 import {
   acceptInvite,
   createInvite,
@@ -51,6 +53,7 @@ import {
   invalidateUserResets,
   pruneLoginAttempts,
   recordLoginAttempt,
+  updateColour,
   updatePassword,
   type User,
 } from './users.js'
@@ -273,11 +276,25 @@ app.get('/invite/:token', async (c) => {
 app.get('/healthz', (c) => c.text('ok'))
 
 app.use('/', requireAuth)
+app.use('/profile', requireAuth)
+app.use('/profile/*', requireAuth)
 app.use('/lists', requireAuth)
 app.use('/lists/*', requireAuth)
 app.use('/list/*', requireAuth)
 
 app.get('/', async (c) => c.redirect(await landing(c.get('user').id)))
+
+app.get('/profile', (c) => c.html(<ProfilePage user={c.get('user')} />))
+
+app.post('/profile/colour/:colour', async (c) => {
+  const colour = c.req.param('colour')
+  const user = c.get('user')
+
+  if (!isColour(colour)) return c.html(<ColourPicker current={user.colour} />, 400)
+
+  await updateColour(user.id, colour)
+  return c.html(<ColourPicker current={colour} />)
+})
 
 app.get('/lists/new', async (c) => {
   const lists = await listsForUser(c.get('user').id)

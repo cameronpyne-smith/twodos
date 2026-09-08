@@ -2,9 +2,10 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3 — todo fields.** Accounts, multiple lists, membership and
+**Current state: Milestone 3.1 — user colours.** Accounts, multiple lists, membership and
 single-use invite links. Todos carry an assignee, a due date and notes, with overdue
-highlighting and filter chips. Done items collapse into a group that hides after 24 hours.
+highlighting and filter chips. Each person has a colour, shown as an edge bar on the todos
+assigned to them. Done items collapse into a group that hides after 24 hours.
 
 ## Stack
 
@@ -24,8 +25,10 @@ src/lists.ts        List, membership and invite queries
 src/email.ts        Password-reset email over SMTP
 src/views.tsx       Server-rendered JSX (Layout, Page, TodoList, TodoRow)
 src/auth-views.tsx  Sign in, sign up, forgot and reset pages
+src/profile-views.tsx  Profile page and colour picker
 src/db.ts           Todo queries, filtering, overdue test
 src/dates.ts        Europe/London date handling and due-date formatting
+src/colours.ts      The user colour palette and its assignment rules
 src/sql.ts          Lazy Neon connection
 src/vercel.ts       Production entry point (Node request listener)
 src/dev.ts          Local dev server, serves public/ and the app
@@ -145,6 +148,39 @@ a form someone is halfway through.
 
 Assignee and due date are validated server-side: an assignee must be a member of the list,
 which stops a tampered form assigning a todo to an arbitrary user id.
+
+## Colours
+
+Every user has a `colour` on `users` — one of ten keys (`amber`, `teal`, …), not a hex value.
+Each key resolves to a `--c-*` custom property with a light and a dark variant defined
+together in `app.css`, so a colour is legible on both grounds with no contrast maths at
+render time. Colour reaches the markup as a **class** (`who-teal`), never as an inline style,
+which keeps every value in the stylesheet beside the tokens it belongs with.
+
+It appears in exactly three places, all of them content rather than chrome: an inset bar on
+the left edge of an assigned todo, the assignee pill, and the member pills in the Share panel.
+It deliberately does **not** tint the filter chips or any control — the accent green means
+*primary action* throughout the app, and a colour that means *belongs to a person* must not
+compete with it.
+
+**Who and when are separate channels.** The row's border still belongs to overdue; the edge
+bar belongs to the assignee. Both are therefore visible on the same row, which matters because
+an overdue todo assigned to a specific person is the one worth spotting. The bar is drawn with
+`box-shadow: inset`, so it costs no layout shift and leaves the existing overdue rule alone.
+
+**The array order in `src/colours.ts` is a mechanism, not a preference.** Automatic assignment
+takes the lowest-index colour not already used in the list, so the order decides which colours
+real people get. The well-separated hues come first; the closer pairs (`pink`/`rose`,
+`ice`/`teal`/`slate`) sit at the end and are only ever reached by a deliberate pick.
+
+Signup assigns a random colour. **Joining a list re-assigns it only if it clashes** with a
+member already there — so people who see each other's todos never share a colour, without a
+per-list colour column and without disturbing anyone whose choice is already unique. The
+trade-off is accepted: a deliberate choice can be overridden by joining a list where it is
+taken, which is better than two people rendering identically.
+
+Because todos now join `memberships` rather than `users` to reach the assignee, an assignee who
+is no longer a member of the list renders with no name and no colour instead of a stale one.
 
 ## Deploying
 

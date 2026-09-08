@@ -1,5 +1,6 @@
+import { nextColour } from './colours.js'
 import { sql } from './sql.js'
-import type { User } from './users.js'
+import { updateColour, type User } from './users.js'
 
 export type List = {
   id: string
@@ -47,7 +48,7 @@ export async function createList(name: string, userId: string): Promise<List> {
 
 export async function membersOfList(listId: string): Promise<User[]> {
   return (await sql()`
-    select u.id, u.email, u.display_name
+    select u.id, u.email, u.display_name, u.colour
     from users u
     join memberships m on m.user_id = u.id
     where m.list_id = ${listId}
@@ -96,5 +97,17 @@ export async function acceptInvite(tokenHash: string, userId: string): Promise<s
     insert into memberships (user_id, list_id) values (${userId}, ${listId})
     on conflict do nothing
   `
+  await settleColour(listId, userId)
   return listId
+}
+
+async function settleColour(listId: string, userId: string): Promise<void> {
+  const members = await membersOfList(listId)
+  const mine = members.find((m) => m.id === userId)
+  if (!mine) return
+
+  const taken = members.filter((m) => m.id !== userId).map((m) => m.colour)
+  if (!taken.includes(mine.colour)) return
+
+  await updateColour(userId, nextColour(taken))
 }

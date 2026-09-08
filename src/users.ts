@@ -1,9 +1,11 @@
+import { type Colour, randomColour } from './colours.js'
 import { sql } from './sql.js'
 
 export type User = {
   id: string
   email: string
   display_name: string
+  colour: string
 }
 
 type UserWithHash = User & { password_hash: string }
@@ -14,7 +16,7 @@ export function normaliseEmail(email: string): string {
 
 export async function findUserByEmail(email: string): Promise<UserWithHash | null> {
   const rows = (await sql()`
-    select id, email, display_name, password_hash
+    select id, email, display_name, colour, password_hash
     from users
     where email = ${normaliseEmail(email)}
   `) as UserWithHash[]
@@ -23,7 +25,7 @@ export async function findUserByEmail(email: string): Promise<UserWithHash | nul
 
 export async function findUserById(id: string): Promise<User | null> {
   const rows = (await sql()`
-    select id, email, display_name from users where id = ${id}
+    select id, email, display_name, colour from users where id = ${id}
   `) as User[]
   return rows[0] ?? null
 }
@@ -34,13 +36,17 @@ export async function createUser(
   displayName: string,
 ): Promise<User> {
   const rows = (await sql()`
-    insert into users (email, password_hash, display_name)
-    values (${normaliseEmail(email)}, ${passwordHash}, ${displayName})
-    returning id, email, display_name
+    insert into users (email, password_hash, display_name, colour)
+    values (${normaliseEmail(email)}, ${passwordHash}, ${displayName}, ${randomColour()})
+    returning id, email, display_name, colour
   `) as User[]
   const user = rows[0]
   if (!user) throw new Error('Insert returned no user')
   return user
+}
+
+export async function updateColour(userId: string, colour: Colour): Promise<void> {
+  await sql()`update users set colour = ${colour} where id = ${userId}`
 }
 
 export async function updatePassword(userId: string, passwordHash: string): Promise<void> {
