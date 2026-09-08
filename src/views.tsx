@@ -33,10 +33,26 @@ const IDLE = "document.visibilityState === 'visible' && !document.querySelector(
 const POLL = [
   `every 10s [${IDLE}]`,
   `visibilitychange[${IDLE}] from:document`,
-  'twodos:refresh from:body',
 ].join(', ')
 
 const DONE_STATE = "js:{done: document.querySelector('.done-group')?.open ? 1 : 0}"
+
+const CLOSE = [
+  'click',
+  "click[!this.closest('li').contains(event.target)] from:body",
+  "keyup[key=='Escape'] from:body",
+].join(', ')
+
+const FLASH_RESET = "event.target.classList.remove('ok', 'bad')"
+
+const FLASH = [
+  'const f = event.detail.requestConfig?.triggeringEvent?.target;',
+  'if (f && f.form === this && f.name) {',
+  "f.classList.remove('ok', 'bad');",
+  'void f.offsetWidth;',
+  "f.classList.add(event.detail.successful ? 'ok' : 'bad');",
+  '}',
+].join(' ')
 
 export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: string }> = ({
   todo,
@@ -108,9 +124,11 @@ export const TodoEditRow: FC<{
     <li class="todo editing">
       <form
         class="fields"
-        hx-post={`${base}${query(filter)}`}
-        hx-target="closest li"
-        hx-swap="outerHTML"
+        hx-post={`${base}/field${query(filter)}`}
+        hx-trigger="change"
+        hx-swap="none"
+        hx-on:change={FLASH_RESET}
+        hx-on--after-request={FLASH}
       >
         {error && <p class="row-error">{error}</p>}
 
@@ -122,7 +140,6 @@ export const TodoEditRow: FC<{
             value={todo.title}
             maxlength={500}
             autocomplete="off"
-            required
           />
         </label>
 
@@ -159,15 +176,28 @@ export const TodoEditRow: FC<{
         </label>
 
         <div class="row-actions">
-          <button type="submit">Save</button>
           <button
             type="button"
-            class="link"
-            hx-get={`${base}/row${query(filter)}`}
+            class="collapse"
+            aria-label="Close"
+            hx-post={`${base}${query(filter)}`}
+            hx-trigger={CLOSE}
             hx-target="closest li"
             hx-swap="outerHTML"
           >
-            Cancel
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 15l6-6 6 6" />
+            </svg>
           </button>
           <button
             type="button"

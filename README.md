@@ -2,7 +2,7 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.3 — row layout and add flow.** Accounts, multiple lists,
+**Current state: Milestone 3.4 — auto-saving edit form.** Accounts, multiple lists,
 membership and single-use invite links. Todos carry an assignee, a due date and notes, all
 settable as you add them, with overdue highlighting and filter chips. Each person has a colour,
 shown as an edge bar on the todos assigned to them, and any todo can be flagged important,
@@ -176,11 +176,43 @@ through the UI — `type="date"` and a select of members see to that — so the 
 tampered request, and there is no error state worth designing for something nobody can do by
 accident. This mirrors `asColour()`, which validates and falls back rather than failing.
 
-Editing swaps a single row for a form (`hx-target="closest li"`) rather than navigating.
-Saving returns the fresh row and sets an `HX-Trigger-After-Swap: twodos:refresh` response header, so
-the surrounding list re-renders and picks up any change in due-date ordering. The 10-second
-background poll is filtered on `!document.querySelector('.editing')` so it cannot wipe out
-a form someone is halfway through.
+Editing swaps a single row for a form (`hx-target="closest li"`) rather than navigating. The
+10-second background poll is filtered on `!document.querySelector('.editing')` so it cannot wipe
+out a form someone is halfway through.
+
+**There is no Save button.** The form posts to `/field` on `change`, which HTML already fires at
+the right moment for each kind of input: immediately for the checkbox, the date and the select,
+and on blur — only if the value actually changed — for the title and notes. One trigger,
+`hx-trigger="change"`, covers all five fields with no debounce and no per-field wiring.
+
+That route answers **204** on success and **422** on an empty title, so nothing is swapped either
+way. The field that changed then flashes: an accent ring that fades on success, a `--danger` ring
+that stays on failure. The flash is driven from `requestConfig.triggeringEvent.target`, filtered on
+`f.name`, so the chevron and the delete button — which also bubble `htmx:afterRequest` up to the
+form — do not light up.
+
+Three things close the form, all of them htmx trigger filters rather than JavaScript:
+
+```
+click,
+click[!this.closest('li').contains(event.target)] from:body,
+keyup[key=='Escape'] from:body
+```
+
+Clicks rather than `focusout`, deliberately: on a phone `<input type="date">` and `<select>` open
+native overlays that pull focus out of the document, so a focus-based test would close the form
+the instant you tried to pick a date.
+
+Closing posts the form once more and swaps in the fresh row. That looks redundant next to
+auto-save, but it removes a race: clicking the chevron blurs a modified text field, so the
+`change` save and the close would otherwise be two requests whose order decides whether the row
+you see is current.
+
+**Closing does not re-sort the list**, and that is a choice. An earlier version fired
+`twodos:refresh` on close, which raced with opening a different row — the refresh re-rendered the
+container while the other row's form was still in flight, and one of the two swaps lost. The
+ordinary poll re-sorts within ten seconds once nobody is editing, which also means the row you
+just edited stays where you are looking at it instead of jumping away under the cursor.
 
 Assignee and due date are validated server-side: an assignee must be a member of the list,
 which stops a tampered form assigning a todo to an arbitrary user id.
@@ -242,6 +274,9 @@ to the app shows current data instead of waiting out the interval.
 Both triggers share the same guard, held in one `IDLE` constant. The `visibilitychange` trigger
 originally lacked the `.editing` check, so switching apps and back wiped an open form — the
 same defect as the timer, in the one trigger that hadn't been given the guard.
+
+The poll is now also what re-sorts the list after an edit, since auto-save means changes land
+while a form is open and nothing fires a refresh when it closes.
 
 **Unchanged responses do not swap.** Each rendered list carries a short content hash in
 `hx-headers`; the poll sends it back as `X-Todo-Version`, and if it still matches the server

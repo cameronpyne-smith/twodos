@@ -392,21 +392,6 @@ app.post('/list/:id/todos/:todoId/delete', async (c) => {
   return c.html(await renderList(c))
 })
 
-app.get('/list/:id/todos/:todoId/row', async (c) => {
-  const list = c.get('list')
-  const todo = await findTodo(list.id, c.req.param('todoId'))
-  if (!todo) return c.notFound()
-
-  return c.html(
-    <TodoRow
-      todo={todo}
-      listId={list.id}
-      filter={parseFilter(c.req.query('filter'))}
-      today={londonToday()}
-    />,
-  )
-})
-
 app.get('/list/:id/todos/:todoId/edit', async (c) => {
   const list = c.get('list')
   const todo = await findTodo(list.id, c.req.param('todoId'))
@@ -469,8 +454,34 @@ app.post('/list/:id/todos/:todoId', async (c) => {
   const saved = await findTodo(list.id, todoId)
   if (!saved) return c.notFound()
 
-  c.header('HX-Trigger-After-Swap', 'twodos:refresh')
   return c.html(<TodoRow todo={saved} listId={list.id} filter={filter} today={londonToday()} />)
+})
+
+app.post('/list/:id/todos/:todoId/field', async (c) => {
+  const list = c.get('list')
+  const todoId = c.req.param('todoId')
+
+  const todo = await findTodo(list.id, todoId)
+  if (!todo) return c.notFound()
+
+  const body = await c.req.parseBody()
+  const title = field(body, 'title')
+  if (!title) return c.body(null, 422)
+
+  const notes = field(body, 'notes')
+  const dueDate = field(body, 'due_date')
+  const assigneeId = field(body, 'assignee_id')
+  const members = await membersOfList(list.id)
+
+  await updateTodo(list.id, todoId, {
+    title: title.slice(0, 500),
+    notes: notes ? notes.slice(0, 2000) : null,
+    assigneeId: members.some((m) => m.id === assigneeId) ? assigneeId : null,
+    dueDate: dueDate && isValidDate(dueDate) ? dueDate : null,
+    important: body['important'] !== undefined,
+  })
+
+  return c.body(null, 204)
 })
 
 app.post('/list/:id/invite', async (c) => {
