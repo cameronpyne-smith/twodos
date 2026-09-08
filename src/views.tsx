@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
 import { asColour } from './colours.js'
-import { formatDue } from './dates.js'
+import { daysUntil, formatDue } from './dates.js'
 import { FILTERS, isOverdue, type Filter, type Todo } from './db.js'
 import type { List } from './lists.js'
 import type { User } from './users.js'
@@ -55,6 +55,13 @@ const FLASH = [
   '}',
 ].join(' ')
 
+function dueClass(todo: Todo, overdue: boolean, today: string): string {
+  if (overdue) return 'due-col late'
+
+  const delta = daysUntil(todo.due_date as string, today)
+  return delta === 0 || delta === 1 ? 'due-col soon' : 'due-col'
+}
+
 export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: string }> = ({
   todo,
   listId,
@@ -95,18 +102,31 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
             )}
             {todo.title}
           </span>
-          {(todo.due_date || todo.assignee_name || todo.notes) && (
+          {(todo.assignee_name || todo.notes) && (
             <span class="meta">
               {todo.assignee_name && <span class="chip who">{todo.assignee_name}</span>}
-              {todo.due_date && (
-                <span class={overdue ? 'chip due overdue' : 'chip due'}>
-                  {formatDue(todo.due_date, today)}
-                </span>
-              )}
               {todo.notes && <span class="notes">{todo.notes}</span>}
             </span>
           )}
         </span>
+        {todo.due_date && (
+          <span class={dueClass(todo, overdue, today)}>
+            <svg
+              width="11"
+              height="11"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              aria-hidden="true"
+            >
+              <rect x="3" y="5" width="18" height="16" rx="2" />
+              <path d="M3 10h18M8 3v4M16 3v4" />
+            </svg>
+            <span>{formatDue(todo.due_date, today)}</span>
+          </span>
+        )}
       </button>
     </li>
   )

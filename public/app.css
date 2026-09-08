@@ -553,9 +553,36 @@ button.link:hover {
   border-radius: 999px;
 }
 
-.meta .chip.due.overdue {
+.due-col {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: auto;
+  padding-left: 0.5rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.due-col svg {
+  flex: none;
+  display: block;
+}
+
+.due-col span {
+  min-width: 4rem;
+}
+
+.due-col.soon {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.due-col.late {
   color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+  font-weight: 600;
 }
 
 .notes {
@@ -571,7 +598,8 @@ button.link:hover {
   border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
 }
 
-.done .meta {
+.done .meta,
+.done .due-col {
   opacity: 0.6;
 }
 

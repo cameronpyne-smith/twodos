@@ -2,10 +2,11 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.5 — completion sound.** Accounts, multiple lists,
+**Current state: Milestone 3.6 — due date column.** Accounts, multiple lists,
 membership and single-use invite links. Todos carry an assignee, a due date and notes, all
-settable as you add them, with overdue highlighting and filter chips. Each person has a colour,
-shown as an edge bar on the todos assigned to them, and any todo can be flagged important,
+settable as you add them, with the due date in a column down the right edge, overdue highlighting
+and filter chips. Each person has a colour shown as an edge bar on the todos assigned to them,
+and any todo can be flagged important,
 which floats it to the top. Done items collapse into a group that hides after 24 hours, and
 ticking one plays a short ding.
 
@@ -141,6 +142,27 @@ the driver would otherwise hand back a `Date` at local midnight and reintroduce 
 the offset bugs the date-only choice exists to avoid. "Today" comes from one helper in
 `src/dates.ts`, so overdue and the "Today / Tomorrow / Fri / 12 Sep" labels can never
 disagree.
+
+**The due date is a right-hand column, not a pill.** It sits at the row's right edge behind a
+small calendar glyph, with the assignee pill leading the meta row on the left. A pill is a
+container, and a container says *this is a distinct object*; the assignee pill earns one because
+it carries a person and their colour, and giving the date the same shape put two containers of
+equal rank in one row saying different kinds of thing. As a column it can also be scanned
+vertically, which a date buried mid-row cannot.
+
+The label reserves `min-width: 4rem`, sized to the longest string the formatter can emit
+(*Yesterday*). Without it the column is right-aligned over labels of different lengths, so the
+glyphs land at a different x on every row — a ragged edge that advertises a column which is not
+really there. Reserving width a short label does not need is the same move rejected for the
+pills, and it is right here for the opposite reason: alignment is the entire purpose of a column.
+
+Three states, by colour and weight rather than by shape: muted for anything further out,
+full-strength semibold for today and tomorrow, `--danger` semibold once it has slipped.
+
+The column lives **inside** the `.open` button rather than beside it, so the row keeps its
+two-control shape and the strip of row under the date is not a dead zone. It is `flex: none`
+with `margin-left: auto` next to a `min-width: 0` body, so a long title shrinks and ellipsises
+around it instead of pushing it off the edge.
 
 A row has exactly two controls: the checkbox toggles done, and tapping anywhere else opens
 the editor. Delete lives inside the editor, so the only destructive action in the list is
@@ -357,11 +379,6 @@ the left edge of an assigned todo, the assignee pill, and the member pills in th
 It deliberately does **not** tint the filter chips or any control — the accent green means
 *primary action* throughout the app, and a colour that means *belongs to a person* must not
 compete with it.
-
-**The assignee pill leads the meta row.** It comes before the due date because it is the only
-thing in that row carrying a colour, so it is what the eye lands on first anyway; putting it
-first means the colour column reads straight down the list instead of starting at whatever x
-position the previous row's date happened to end at.
 
 **Who and when are separate channels.** The row's border still belongs to overdue; the edge
 bar belongs to the assignee. Both are therefore visible on the same row, which matters because
