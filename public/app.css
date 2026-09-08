@@ -232,7 +232,16 @@ button:focus-visible {
 }
 
 .who form {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
   margin: 0;
+}
+
+.who form::before {
+  content: '|';
+  content: '|' / '';
+  color: var(--border);
 }
 
 button.link {
