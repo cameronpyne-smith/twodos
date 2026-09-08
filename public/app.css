@@ -131,7 +131,7 @@ button:focus-visible {
   justify-content: center;
   min-width: var(--tap);
   min-height: var(--tap);
-  padding: 0 0.75rem 0 0.85rem;
+  padding: 0 0.75rem 0 1.15rem;
   color: inherit;
   background: none;
   border: 0;
@@ -655,9 +655,6 @@ button.link:hover {
   box-shadow: inset 4px 0 0 var(--who);
 }
 
-.todo[class*='who-'] .tick {
-  padding-left: 1.15rem;
-}
 
 .meta .chip.who {
   color: var(--who);
