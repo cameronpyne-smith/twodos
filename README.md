@@ -358,6 +358,11 @@ It deliberately does **not** tint the filter chips or any control — the accent
 *primary action* throughout the app, and a colour that means *belongs to a person* must not
 compete with it.
 
+**The assignee pill leads the meta row.** It comes before the due date because it is the only
+thing in that row carrying a colour, so it is what the eye lands on first anyway; putting it
+first means the colour column reads straight down the list instead of starting at whatever x
+position the previous row's date happened to end at.
+
 **Who and when are separate channels.** The row's border still belongs to overdue; the edge
 bar belongs to the assignee. Both are therefore visible on the same row, which matters because
 an overdue todo assigned to a specific person is the one worth spotting. The bar is drawn with

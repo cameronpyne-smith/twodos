@@ -97,12 +97,12 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
           </span>
           {(todo.due_date || todo.assignee_name || todo.notes) && (
             <span class="meta">
+              {todo.assignee_name && <span class="chip who">{todo.assignee_name}</span>}
               {todo.due_date && (
                 <span class={overdue ? 'chip due overdue' : 'chip due'}>
                   {formatDue(todo.due_date, today)}
                 </span>
               )}
-              {todo.assignee_name && <span class="chip who">{todo.assignee_name}</span>}
               {todo.notes && <span class="notes">{todo.notes}</span>}
             </span>
           )}
