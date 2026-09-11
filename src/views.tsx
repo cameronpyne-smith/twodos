@@ -308,10 +308,24 @@ export const AddForm: FC<{ listId: string; filter: Filter; members: User[] }> = 
     </div>
 
     <div class="add-extras fields">
-      <label class="check">
-        <input type="checkbox" name="important" />
-        Important
-      </label>
+      <div class="opts">
+        <label class="check">
+          <input type="checkbox" name="important" />
+          Important
+        </label>
+        <label class="points">
+          Points
+          <input
+            type="number"
+            name="points"
+            value={1}
+            min={1}
+            max={MAX_POINTS}
+            step={1}
+            inputmode="numeric"
+          />
+        </label>
+      </div>
 
       <div class="pair">
         <label>

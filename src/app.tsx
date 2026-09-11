@@ -389,7 +389,7 @@ app.post('/list/:id/todos', async (c) => {
       assigneeId: members.some((m) => m.id === assigneeId) ? assigneeId : null,
       dueDate: dueDate && isValidDate(dueDate) ? dueDate : null,
       important: body['important'] !== undefined,
-      points: 1,
+      points: parsePoints(field(body, 'points')),
     })
   }
 
