@@ -197,3 +197,56 @@ export async function weekScores(listId: string, from: string): Promise<Score[]>
     order by points desc, u.display_name
   `) as Score[]
 }
+
+export type DayStat = {
+  day: string
+  done: number
+  points: number
+}
+
+export type Lifetime = {
+  done: number
+  points: number
+  best: number
+  since: string | null
+}
+
+export async function dailyStats(userId: string, today: string): Promise<DayStat[]> {
+  return (await sql()`
+    select to_char(d.day, 'YYYY-MM-DD') as day,
+           count(t.id)::int as done,
+           coalesce(sum(t.scored_points), 0)::int as points
+    from generate_series(
+           ${today}::date - interval '6 days',
+           ${today}::date,
+           interval '1 day') as d(day)
+    left join todos t
+           on t.completed_by = ${userId}
+          and t.deleted_at is null
+          and date_trunc('day', t.completed_at at time zone 'Europe/London') = d.day
+    group by d.day
+    order by d.day
+  `) as DayStat[]
+}
+
+export async function lifetimeStats(userId: string): Promise<Lifetime> {
+  const rows = (await sql()`
+    with per_day as (
+      select date_trunc('day', completed_at at time zone 'Europe/London') as day,
+             count(*) as done,
+             coalesce(sum(scored_points), 0) as points
+      from todos
+      where completed_by = ${userId}
+        and deleted_at is null
+        and completed_at is not null
+      group by 1
+    )
+    select coalesce(sum(done), 0)::int as done,
+           coalesce(sum(points), 0)::int as points,
+           coalesce(max(points), 0)::int as best,
+           to_char(min(day), 'YYYY-MM-DD') as since
+    from per_day
+  `) as Lifetime[]
+
+  return rows[0] ?? { done: 0, points: 0, best: 0, since: null }
+}

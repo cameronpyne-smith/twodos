@@ -885,6 +885,94 @@ button.link:hover {
   opacity: 0.55;
 }
 
+.chart {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.35rem;
+  align-items: end;
+}
+
+.chart .col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.chart .val {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.chart .val.zero {
+  opacity: 0.35;
+}
+
+.chart .track {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+  height: 72px;
+}
+
+.chart .bar {
+  width: 100%;
+  max-width: 2rem;
+  min-height: 2px;
+  background: color-mix(in srgb, var(--accent) 80%, var(--surface));
+  border-radius: 4px 4px 0 0;
+}
+
+.chart .bar.empty {
+  background: var(--border);
+}
+
+.chart .day {
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.chart .day.today {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.8rem 0.9rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.figure .n {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure .k {
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .profile .alt {
   margin: 2.5rem 0 0;
   font-size: 0.85rem;

@@ -2,14 +2,16 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 4 — points.** Accounts, multiple lists, membership and single-use
+**Current state: Milestone 4.1 — profile stats.** Accounts, multiple lists, membership and single-use
 invite links, with rename and sharing behind a cog in the header. Todos carry an assignee, a due
 date and notes, all settable as you add them, with the due date in a column down the right edge,
 overdue highlighting and filter chips. Each one is also worth points — 1 by default, more for the
 harder jobs — which are scored to whoever ticks it and totted up per person for the current week.
 Each person has a colour shown as an edge bar on the todos assigned to them, and any todo can be
-flagged important, which floats it to the top. Done items collapse into a group that hides after
-24 hours, and ticking one plays a short ding that gets richer the more the item was worth.
+flagged important, which floats it to the top. Your profile charts the points you have earned each
+day for the last week, with your running totals under it. Done items collapse into a group that
+hides after 24 hours, and ticking one plays a short ding that gets richer the more the item was
+worth.
 
 ## Stack
 
@@ -352,6 +354,42 @@ the header**, which diverges from the mockup deliberately: the header is outside
 so a score there would not move when you ticked something, which is the one moment it has to. In
 the list it is re-rendered by every toggle and every poll for free. The header was also already
 carrying a name, a cog, a profile link and Sign out at 360px.
+
+### The profile chart
+
+`/profile` carries a seven-column bar chart of **points earned per day** and three lifetime
+figures: items completed, points, and the best single day. Two queries, both cheap, neither
+needing anything the schema did not already have.
+
+**Points per day, not items per day.** A single hard job outranks three easy ones, which is the
+whole premise of the feature — a chart counting items would quietly contradict the thing it is
+charting. The cost is that the y-axis range can be wide: a 1-point day next to an 18-point day is
+a 5% bar next to a full one, close to invisible. The count printed above each bar carries those
+days instead.
+
+`generate_series` supplies the seven dates and the todos are left-joined onto them, so an empty
+day is a real zero column rather than a missing one, and the chart always has seven bars. Days
+bucket by `date_trunc('day', completed_at at time zone 'Europe/London')` for the same reason due
+dates are London-local. `today` is passed in from the app rather than read from the database
+clock, so the chart and the rest of the page cannot disagree about what day it is.
+
+**The window is the last seven days, not the scoreboard's week.** The list page scores Monday to
+Monday; this rolls, so today is always the rightmost column. They are deliberately different — a
+Monday-anchored chart would be one column wide on a Monday — and the hint under the figures says
+so, because two different weeks on two different pages is otherwise a bug report waiting to
+happen.
+
+**The figures span every list you are a member of**, which is right for a page about you rather
+than about one list, and is stated in the hint. With one list it is invisible; with two, "9
+completed" would otherwise not match any single list's scoreboard.
+
+There is no chart library and no client-side code: seven divs in a CSS grid with a percentage
+height, rendered on the server like everything else. Before a user has completed anything the
+whole block is replaced by a single line of encouragement, so a new account does not meet three
+zeroes and an empty chart.
+
+Jenny's numbers are deliberately **not** on Cameron's profile. The head-to-head lives above the
+list where both people see it; the profile is the one page in the app that is about you alone.
 
 ## The completion sound
 

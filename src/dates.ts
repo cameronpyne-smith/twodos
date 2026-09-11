@@ -15,6 +15,13 @@ const shortFormat = new Intl.DateTimeFormat('en-GB', {
   month: 'short',
 })
 
+const longFormat = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'UTC',
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+})
+
 export function londonToday(): string {
   return isoFormat.format(new Date())
 }
@@ -49,4 +56,12 @@ export function weekStart(today: string = londonToday()): string {
   const days = dayNumber(today)
   const monday = days - ((days + 3) % 7)
   return new Date(monday * 86_400_000).toISOString().slice(0, 10)
+}
+
+export function weekdayName(date: string): string {
+  return weekdayFormat.format(new Date(`${date}T00:00:00Z`))
+}
+
+export function formatDate(date: string): string {
+  return longFormat.format(new Date(`${date}T00:00:00Z`))
 }

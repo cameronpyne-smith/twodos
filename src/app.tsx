@@ -31,6 +31,8 @@ import {
   toggleTodo,
   parsePoints,
   weekScores,
+  dailyStats,
+  lifetimeStats,
   updateTodo,
   type Filter,
 } from './db.js'
@@ -301,7 +303,13 @@ app.use('/list/*', requireAuth)
 
 app.get('/', async (c) => c.redirect(await landing(c.get('user').id)))
 
-app.get('/profile', (c) => c.html(<ProfilePage user={c.get('user')} />))
+app.get('/profile', async (c) => {
+  const user = c.get('user')
+  const today = londonToday()
+  const [days, life] = await Promise.all([dailyStats(user.id, today), lifetimeStats(user.id)])
+
+  return c.html(<ProfilePage user={user} days={days} life={life} today={today} />)
+})
 
 app.post('/profile/colour/:colour', async (c) => {
   const colour = c.req.param('colour')
