@@ -11,6 +11,7 @@ export type Todo = {
   assignee_name: string | null
   assignee_colour: string | null
   due_date: string | null
+  points: number
   completed_at: string | null
   created_at: string
 }
@@ -21,11 +22,35 @@ export type TodoFields = {
   assigneeId: string | null
   dueDate: string | null
   important: boolean
+  points: number
 }
 
 export const FILTERS = ['all', 'mine', 'theirs', 'unassigned'] as const
 
 export type Filter = (typeof FILTERS)[number]
+
+export type Score = {
+  user_id: string
+  display_name: string
+  colour: string | null
+  points: number
+  done: number
+}
+
+export const MAX_POINTS = 99
+
+export function parsePoints(value: string): number {
+  const points = Number.parseInt(value, 10)
+  if (!Number.isFinite(points)) return 1
+  return Math.min(Math.max(points, 1), MAX_POINTS)
+}
+
+export function pointsTier(points: number): string {
+  if (points >= 6) return 'p4'
+  if (points >= 4) return 'p3'
+  if (points >= 2) return 'p2'
+  return 'p1'
+}
 
 export function parseFilter(value: string | undefined): Filter {
   return FILTERS.includes(value as Filter) ? (value as Filter) : 'all'
@@ -58,6 +83,7 @@ export function todoVersion(todos: Todo[], filter: Filter, today: string): strin
     t.assignee_name,
     t.assignee_colour,
     t.due_date,
+    t.points,
     t.completed_at,
   ])
 
@@ -78,7 +104,7 @@ export async function listTodos(listId: string): Promise<Todo[]> {
   return (await sql()`
     select t.id, t.title, t.notes, t.important, t.assignee_id,
            u.display_name as assignee_name, u.colour as assignee_colour,
-           to_char(t.due_date, 'YYYY-MM-DD') as due_date,
+           to_char(t.due_date, 'YYYY-MM-DD') as due_date, t.points,
            to_char(t.completed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as completed_at,
            to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from todos t
@@ -100,7 +126,7 @@ export async function findTodo(listId: string, id: string): Promise<Todo | null>
   const rows = (await sql()`
     select t.id, t.title, t.notes, t.important, t.assignee_id,
            u.display_name as assignee_name, u.colour as assignee_colour,
-           to_char(t.due_date, 'YYYY-MM-DD') as due_date,
+           to_char(t.due_date, 'YYYY-MM-DD') as due_date, t.points,
            to_char(t.completed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as completed_at,
            to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
     from todos t
@@ -117,9 +143,10 @@ export async function createTodo(
   fields: TodoFields,
 ): Promise<void> {
   await sql()`
-    insert into todos (list_id, created_by, title, notes, assignee_id, due_date, important)
+    insert into todos (list_id, created_by, title, notes, assignee_id, due_date, important, points)
     values (${listId}, ${createdBy}, ${fields.title}, ${fields.notes},
-            ${fields.assigneeId}::uuid, ${fields.dueDate}::date, ${fields.important})
+            ${fields.assigneeId}::uuid, ${fields.dueDate}::date, ${fields.important},
+            ${fields.points})
   `
 }
 
@@ -130,7 +157,8 @@ export async function updateTodo(listId: string, id: string, fields: TodoFields)
         notes       = ${fields.notes},
         assignee_id = ${fields.assigneeId}::uuid,
         due_date    = ${fields.dueDate}::date,
-        important   = ${fields.important}
+        important   = ${fields.important},
+        points      = ${fields.points}
     where id = ${id} and list_id = ${listId} and deleted_at is null
   `
 }
@@ -138,12 +166,34 @@ export async function updateTodo(listId: string, id: string, fields: TodoFields)
 export async function toggleTodo(listId: string, id: string, userId: string): Promise<void> {
   await sql()`
     update todos
-    set completed_at = case when completed_at is null then now() else null end,
-        completed_by = case when completed_at is null then ${userId}::uuid else null end
+    set completed_at  = case when completed_at is null then now() else null end,
+        completed_by  = case when completed_at is null then ${userId}::uuid else null end,
+        scored_points = case when completed_at is null then points else null end
     where id = ${id} and list_id = ${listId} and deleted_at is null
   `
 }
 
 export async function deleteTodo(listId: string, id: string): Promise<void> {
   await sql()`update todos set deleted_at = now() where id = ${id} and list_id = ${listId}`
+}
+
+export async function weekScores(listId: string, from: string): Promise<Score[]> {
+  return (await sql()`
+    select u.id as user_id, u.display_name, u.colour,
+           coalesce(s.points, 0)::int as points,
+           coalesce(s.done, 0)::int as done
+    from memberships m
+    join users u on u.id = m.user_id
+    left join (
+      select completed_by, sum(scored_points) as points, count(*) as done
+      from todos
+      where list_id = ${listId}
+        and deleted_at is null
+        and completed_by is not null
+        and completed_at >= (${from}::date at time zone 'Europe/London')
+      group by completed_by
+    ) s on s.completed_by = u.id
+    where m.list_id = ${listId}
+    order by points desc, u.display_name
+  `) as Score[]
 }

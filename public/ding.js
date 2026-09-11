@@ -14,7 +14,12 @@
 
   let ctx
 
-  function ding() {
+  function ding(points) {
+    const weight = Math.min(Math.max((points - 1) / 7, 0), 1)
+    const partials = weight >= 0.3 ? DING.partials.concat([[4, 0.05]]) : DING.partials
+    const tail = DING.decay * (1 + 0.4 * weight)
+    const gain = DING.volume * (1 + 0.15 * weight)
+
     if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)()
     if (ctx.state === 'suspended') ctx.resume()
 
@@ -26,10 +31,10 @@
     filter.Q.value = 0.5
     filter.connect(ctx.destination)
 
-    for (const partial of DING.partials) {
+    for (const partial of partials) {
       const ratio = partial[0]
-      const decay = DING.decay / (1 + 0.4 * (ratio - 1))
-      const level = DING.volume * partial[1] * (ratio === 1 ? 1 : DING.shimmer)
+      const decay = tail / (1 + 0.4 * (ratio - 1))
+      const level = gain * partial[1] * (ratio === 1 ? 1 : DING.shimmer)
       const osc = ctx.createOscillator()
       const amp = ctx.createGain()
 
@@ -54,8 +59,10 @@
     const row = tick.closest('li')
     if (!row || row.classList.contains('done')) return
 
+    const points = Number(row.dataset.points)
+
     try {
-      ding()
+      ding(Number.isFinite(points) && points > 0 ? points : 1)
     } catch (_) {}
   })
 })()

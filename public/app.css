@@ -561,6 +561,7 @@ button.link:hover {
 }
 
 .body {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -592,7 +593,6 @@ button.link:hover {
   display: flex;
   align-items: center;
   gap: 0.3rem;
-  margin-left: auto;
   padding-left: 0.5rem;
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
@@ -635,6 +635,77 @@ button.link:hover {
 .done .meta,
 .done .due-col {
   opacity: 0.6;
+}
+
+.pts {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-width: 1.6rem;
+  height: 1.6rem;
+  margin-left: 0.5rem;
+  padding: 0 0.35rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+  border-radius: 999px;
+}
+
+.pts.p1 {
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+.pts.p2 {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+.pts.p3 {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+}
+
+.pts.p4 {
+  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.done .pts {
+  opacity: 0.5;
+}
+
+.scores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.score {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.82rem;
+  color: var(--who);
+  background: color-mix(in srgb, var(--who) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--who) 45%, var(--border));
+  border-radius: 999px;
+}
+
+.score b {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.scores .week {
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .todo.editing {
@@ -899,6 +970,28 @@ button.link:hover {
   .bang {
     animation: none;
   }
+}
+
+.opts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.fields label.points {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.fields label.points input {
+  width: 4.5rem;
+  min-height: 2.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 .fields label.check {

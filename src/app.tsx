@@ -18,7 +18,7 @@ import {
 } from './auth.js'
 import { ForgotPage, LoginPage, ResetPage, SignupPage } from './auth-views.js'
 import { isColour } from './colours.js'
-import { isValidDate, londonToday } from './dates.js'
+import { isValidDate, londonToday, weekStart } from './dates.js'
 import {
   applyFilter,
   createTodo,
@@ -29,6 +29,8 @@ import {
   splitTodos,
   todoVersion,
   toggleTodo,
+  parsePoints,
+  weekScores,
   updateTodo,
   type Filter,
 } from './db.js'
@@ -99,10 +101,10 @@ async function todoProps(
   filter: Filter,
   done_open: boolean,
 ): Promise<TodoListProps> {
-  const todos = await listTodos(listId)
+  const today = londonToday()
+  const [todos, scores] = await Promise.all([listTodos(listId), weekScores(listId, weekStart(today))])
   const unfinished = todos.filter((t) => t.completed_at === null)
   const { open, done } = splitTodos(applyFilter(todos, filter, userId))
-  const today = londonToday()
 
   return {
     listId,
@@ -113,6 +115,7 @@ async function todoProps(
     today,
     version: todoVersion(todos, filter, today),
     doneOpen: done_open,
+    scores,
     counts: {
       all: unfinished.length,
       mine: applyFilter(unfinished, 'mine', userId).length,
@@ -378,6 +381,7 @@ app.post('/list/:id/todos', async (c) => {
       assigneeId: members.some((m) => m.id === assigneeId) ? assigneeId : null,
       dueDate: dueDate && isValidDate(dueDate) ? dueDate : null,
       important: body['important'] !== undefined,
+      points: 1,
     })
   }
 
@@ -451,6 +455,7 @@ app.post('/list/:id/todos/:todoId', async (c) => {
     assigneeId: assigneeId || null,
     dueDate: dueDate || null,
     important,
+    points: parsePoints(field(body, 'points')),
   })
 
   const saved = await findTodo(list.id, todoId)
@@ -481,6 +486,7 @@ app.post('/list/:id/todos/:todoId/field', async (c) => {
     assigneeId: members.some((m) => m.id === assigneeId) ? assigneeId : null,
     dueDate: dueDate && isValidDate(dueDate) ? dueDate : null,
     important: body['important'] !== undefined,
+    points: parsePoints(field(body, 'points')),
   })
 
   return c.body(null, 204)

@@ -1,7 +1,15 @@
 import type { FC, PropsWithChildren } from 'hono/jsx'
 import { asColour } from './colours.js'
 import { daysUntil, formatDue } from './dates.js'
-import { FILTERS, isOverdue, type Filter, type Todo } from './db.js'
+import {
+  FILTERS,
+  isOverdue,
+  MAX_POINTS,
+  pointsTier,
+  type Filter,
+  type Score,
+  type Todo,
+} from './db.js'
 import type { List } from './lists.js'
 import type { User } from './users.js'
 
@@ -83,7 +91,7 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
   if (todo.assignee_colour) classes.push(`who-${asColour(todo.assignee_colour)}`)
 
   return (
-    <li class={classes.join(' ')}>
+    <li class={classes.join(' ')} data-points={todo.points}>
       <button
         class="tick"
         aria-label={todo.completed_at ? 'Mark as not done' : 'Mark as done'}
@@ -133,6 +141,12 @@ export const TodoRow: FC<{ todo: Todo; listId: string; filter: Filter; today: st
             <span>{formatDue(todo.due_date, today)}</span>
           </span>
         )}
+        <span
+          class={`pts ${pointsTier(todo.points)}`}
+          aria-label={todo.points === 1 ? '1 point' : `${todo.points} points`}
+        >
+          {todo.points}
+        </span>
       </button>
     </li>
   )
@@ -170,10 +184,24 @@ export const TodoEditRow: FC<{
           />
         </label>
 
-        <label class="check">
-          <input type="checkbox" name="important" checked={todo.important} />
-          Important
-        </label>
+        <div class="opts">
+          <label class="check">
+            <input type="checkbox" name="important" checked={todo.important} />
+            Important
+          </label>
+          <label class="points">
+            Points
+            <input
+              type="number"
+              name="points"
+              value={todo.points}
+              min={1}
+              max={MAX_POINTS}
+              step={1}
+              inputmode="numeric"
+            />
+          </label>
+        </div>
 
         <div class="pair">
           <label>
@@ -333,6 +361,17 @@ const Filters: FC<{ listId: string; filter: Filter; counts: Record<Filter, numbe
   </nav>
 )
 
+const Scoreboard: FC<{ scores: Score[] }> = ({ scores }) => (
+  <div class="scores">
+    {scores.map((s) => (
+      <span key={s.user_id} class={`score who-${asColour(s.colour)}`}>
+        {s.display_name} <b>{s.points}</b>
+      </span>
+    ))}
+    <span class="week">this week</span>
+  </div>
+)
+
 export type TodoListProps = {
   listId: string
   filter: Filter
@@ -343,6 +382,7 @@ export type TodoListProps = {
   today: string
   version: string
   doneOpen: boolean
+  scores: Score[]
 }
 
 export const TodoList: FC<TodoListProps> = ({
@@ -355,6 +395,7 @@ export const TodoList: FC<TodoListProps> = ({
   today,
   version,
   doneOpen,
+  scores,
 }) => (
   <div
     id="todo-list"
@@ -363,6 +404,8 @@ export const TodoList: FC<TodoListProps> = ({
     hx-swap="outerHTML"
     hx-headers={JSON.stringify({ 'X-Todo-Version': version })}
   >
+    {(total > 0 || scores.some((s) => s.points > 0)) && <Scoreboard scores={scores} />}
+
     {total > 0 && <Filters listId={listId} filter={filter} counts={counts} />}
 
     {open.length === 0 ? (

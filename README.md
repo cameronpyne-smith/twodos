@@ -2,13 +2,14 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 3.7 — list settings menu.** Accounts, multiple lists, membership and
-single-use invite links, with rename and sharing behind a cog in the header. Todos carry an
-assignee, a due date and notes, all settable as you add them, with the due date in a column down
-the right edge, overdue highlighting and filter chips. Each person has a colour shown as an edge
-bar on the todos assigned to them, and any todo can be flagged important, which floats it to the
-top. Done items collapse into a group that hides after 24 hours, and ticking one plays a short
-ding.
+**Current state: Milestone 4 — points.** Accounts, multiple lists, membership and single-use
+invite links, with rename and sharing behind a cog in the header. Todos carry an assignee, a due
+date and notes, all settable as you add them, with the due date in a column down the right edge,
+overdue highlighting and filter chips. Each one is also worth points — 1 by default, more for the
+harder jobs — which are scored to whoever ticks it and totted up per person for the current week.
+Each person has a colour shown as an edge bar on the todos assigned to them, and any todo can be
+flagged important, which floats it to the top. Done items collapse into a group that hides after
+24 hours, and ticking one plays a short ding that gets richer the more the item was worth.
 
 ## Stack
 
@@ -305,6 +306,53 @@ yellow on a light ground**, so light mode uses a dark gold (`#c99700`) and only 
 the real `#ffd54d`. That gold also sits near the `amber` user colour. Both were judged acceptable
 for how much more noticeable it is, on a list where an important item is rare.
 
+## Points and the weekly score
+
+`todos.points`, an integer, 1 by default, `check (points between 1 and 99)`. Completing a todo
+scores its value to **whoever ticked it**, which is not necessarily who it was assigned to —
+an unassigned job that somebody just gets on with should score to the person who did it. The
+columns that record this, `completed_by` and `completed_at`, already existed from milestone 2.
+
+The score is **the current week only**, Monday 00:00 Europe/London to Monday 00:00. A lifetime
+total stops being a competition almost immediately: whoever has one good fortnight builds a lead
+the other cannot realistically close, and the number degenerates into a tenure counter. A week is
+short enough that losing one does not matter and winning one does. `weekStart()` in `dates.ts`
+returns the Monday of a given day, worked out in day-numbers rather than with a `Date` object, for
+the same reason the rest of that file avoids them.
+
+There is a second column, `scored_points`, written at the moment of completion and nulled when an
+item is un-ticked. It exists so that **the ledger is immutable**: without it, editing a completed
+todo's value would silently move a past week's score, and either of you could inflate your own
+history by reopening last Tuesday's shopping. `points` is what the item is worth now;
+`scored_points` is what it actually paid out. Un-ticking subtracts, because it has to.
+
+Anyone on the list can set any todo's points at any time, including after it is created. At two
+trusted people a permissions model is more machinery than the problem deserves, and what actually
+prevents abuse is that the other person can see it.
+
+The value shows as a **circle at the right-hand end of the row**, outboard of the due date, in one
+hue with a rising fill: an outline at 1, tinted at 2–3, stronger at 4–5, solid accent at 6 and up.
+Four bands, because a finer scale is a colour nobody can decode at a glance and the number itself
+is always there to be read exactly. A multi-hue scale was mocked up and rejected — the app has
+already spent its hues on overdue red, important gold and the ten user colours, so a rainbow scale
+would collide with the rail and the assignee pill on the same row.
+
+It sits **inside the `.open` button**, like the due column and for the same reason: a strip at the
+right edge that is not part of the button would be a 40px dead zone on every row. That in turn
+needed `.body` to become `flex: 1`, which lets it absorb the free space so the two right-hand
+elements sit flush without fighting over `margin-left: auto`.
+
+Points are set from a number input in the row's edit panel, beside the Important tick box. They
+are deliberately **not in the add form** — the add form is already the most crowded surface in the
+app, nearly everything is worth 1, and the exceptions are the items you were going to open anyway.
+
+The running score sits above the filter chips as a coloured pill per person, sorted with the
+leader first, using the colours people already have. It lives **inside `#todo-list` rather than in
+the header**, which diverges from the mockup deliberately: the header is outside the polled region,
+so a score there would not move when you ticked something, which is the one moment it has to. In
+the list it is re-rendered by every toggle and every poll for free. The header was also already
+carrying a name, a cog, a profile link and Sign out at 360px.
+
 ## The completion sound
 
 Ticking an open todo plays a short ding. It is **synthesised in the browser**, not a sound file:
@@ -345,6 +393,13 @@ Audio, or with it blocked, the tick still works and simply makes no sound.
 
 There is no mute setting. Device volume already covers it, and iOS respects the ringer switch for
 Web Audio, so the control exists where people expect it.
+
+**It scales with the item's points**, read from `data-points` on the row rather than from the
+rendered circle, so the sound does not depend on how the value is displayed. The pitch never
+changes — the ding has to stay recognisably the same ding — but a heavier item adds a partial two
+octaves up, lengthens the tail by up to 40% and lifts the level slightly, so an 8-pointer rings
+where a 1-pointer taps. At the top of the range the partials sum to 0.42, still well under
+clipping.
 
 ## Staying live
 
@@ -491,6 +546,7 @@ Never edit a migration that has already been applied — add a new one.
 
 ## Next
 
-Milestone 4 is recurrence: a repeating todo rolls forward on the same row when
-completed, anchored either to its previous due date or to the completion date.
-See the design notes for the full sequence.
+Milestone 5 is the activity feed, which shares its foundations with points: `completed_by`,
+`completed_at` and `scored_points` are already the ledger it needs to read. Recurrence — a
+repeating todo that rolls forward on the same row when completed — is still outstanding and moves
+after it. See the design notes for the full sequence.

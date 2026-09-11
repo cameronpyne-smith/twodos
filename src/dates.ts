@@ -44,3 +44,9 @@ export function formatDue(date: string, today: string = londonToday()): string {
   if (delta > 1 && delta < 7) return weekdayFormat.format(at)
   return shortFormat.format(at)
 }
+
+export function weekStart(today: string = londonToday()): string {
+  const days = dayNumber(today)
+  const monday = days - ((days + 3) % 7)
+  return new Date(monday * 86_400_000).toISOString().slice(0, 10)
+}
