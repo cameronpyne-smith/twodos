@@ -31,6 +31,7 @@ export function manifest(base: string): Record<string, unknown> {
         {
           name: 'io.best.agents.commands',
           version: BEST_VERSION,
+          service: 'io.best.agents',
           description:
             'Changes a person can ask for on a list they are on, and on the tasks it holds.',
           spec: 'https://behavioralstate.io/specs/agents/commands',
@@ -49,6 +50,7 @@ export function manifest(base: string): Record<string, unknown> {
         {
           name: 'io.best.agents.queries',
           version: BEST_VERSION,
+          service: 'io.best.agents',
           description:
             'What a list currently holds: its tasks, the people on it, and the points they have earned.',
           spec: 'https://behavioralstate.io/specs/agents/queries',

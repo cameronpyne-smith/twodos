@@ -103,6 +103,10 @@ app.use('*', async (c, next) => {
   }
 
   await next()
+
+  if (c.res.status === 404 && c.req.header('Origin')) {
+    c.res.headers.set('Access-Control-Allow-Origin', '*')
+  }
 })
 
 const doneOpen = (c: Context) => c.req.query('done') === '1'
