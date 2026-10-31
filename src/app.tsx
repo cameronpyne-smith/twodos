@@ -26,7 +26,7 @@ import {
   revokeApiKey,
 } from './best/keys.js'
 import { MOUNT } from './best/manifest.js'
-import { best, wellKnown } from './best/routes.js'
+import { best, bestCors, wellKnown } from './best/routes.js'
 import { isColour } from './colours.js'
 import { isValidDate, londonToday, weekStart } from './dates.js'
 import {
@@ -304,6 +304,7 @@ app.get('/invite/:token', async (c) => {
 
 app.get('/healthz', (c) => c.text('ok'))
 
+app.use('/.well-known/best', bestCors)
 app.get('/.well-known/best', wellKnown)
 app.route(MOUNT, best)
 

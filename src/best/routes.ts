@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { Hono, type Context } from 'hono'
+import { cors } from 'hono/cors'
 import { baseUrl } from '../auth.js'
 import { COMMANDS, QUERIES, Refused } from './definitions.js'
 import {
@@ -51,7 +52,17 @@ export function wellKnown(c: Context): Response {
   return c.json(manifest(baseUrl(c)))
 }
 
+export const bestCors = cors({
+  origin: '*',
+  allowMethods: ['GET', 'POST', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'X-Api-Key'],
+  exposeHeaders: ['Retry-After'],
+  maxAge: 86400,
+})
+
 export const best = new Hono<BestEnv>()
+
+best.use('*', bestCors)
 
 best.use('*', async (c, next) => {
   const token = c.req.header('X-Api-Key')

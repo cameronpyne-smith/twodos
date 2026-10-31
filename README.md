@@ -530,6 +530,11 @@ the tasks on it, and queries, which read what a list currently holds. There is n
 nothing in twodos records a task being reassigned or reworded, so publishing one would mean
 publishing an incomplete picture. That capability arrives with the activity feed.
 
+Every BEST route answers cross-origin requests from any site, so a browser-based client such as
+the protocol playground can reach it. That is safe here because the credential is a header the
+caller supplies deliberately: there is no cookie or other ambient authority a page could ride, and
+the session cookie the web app uses is never read by these routes.
+
 The protocol has no synchronous command response: a command is acknowledged with the identifier it
 was correlated under, and anything it created is found by filtering the todos query on that
 identifier.
