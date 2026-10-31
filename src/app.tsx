@@ -17,6 +17,16 @@ import {
   verifyPassword,
 } from './auth.js'
 import { ForgotPage, LoginPage, ResetPage, SignupPage } from './auth-views.js'
+import {
+  countKeys,
+  createApiKey,
+  keysForUser,
+  MAX_KEYS_PER_USER,
+  pruneLedger,
+  revokeApiKey,
+} from './best/keys.js'
+import { MOUNT } from './best/manifest.js'
+import { best, wellKnown } from './best/routes.js'
 import { isColour } from './colours.js'
 import { isValidDate, londonToday, weekStart } from './dates.js'
 import {
@@ -37,7 +47,7 @@ import {
   type Filter,
 } from './db.js'
 import { sendPasswordReset } from './email.js'
-import { ColourPicker, ProfilePage } from './profile-views.js'
+import { ApiKeys, ColourPicker, ProfilePage } from './profile-views.js'
 import {
   acceptInvite,
   createInvite,
@@ -294,6 +304,9 @@ app.get('/invite/:token', async (c) => {
 
 app.get('/healthz', (c) => c.text('ok'))
 
+app.get('/.well-known/best', wellKnown)
+app.route(MOUNT, best)
+
 app.use('/', requireAuth)
 app.use('/profile', requireAuth)
 app.use('/profile/*', requireAuth)
@@ -306,9 +319,39 @@ app.get('/', async (c) => c.redirect(await landing(c.get('user').id)))
 app.get('/profile', async (c) => {
   const user = c.get('user')
   const today = londonToday()
-  const [days, life] = await Promise.all([dailyStats(user.id, today), lifetimeStats(user.id)])
+  const [days, life, keys] = await Promise.all([
+    dailyStats(user.id, today),
+    lifetimeStats(user.id),
+    keysForUser(user.id),
+  ])
 
-  return c.html(<ProfilePage user={user} days={days} life={life} today={today} />)
+  return c.html(<ProfilePage user={user} days={days} life={life} today={today} keys={keys} />)
+})
+
+app.post('/profile/keys', async (c) => {
+  const user = c.get('user')
+  const body = await c.req.parseBody()
+  const name = field(body, 'name').slice(0, 60) || 'Agent key'
+
+  if ((await countKeys(user.id)) >= MAX_KEYS_PER_USER) {
+    return c.html(
+      <ApiKeys
+        keys={await keysForUser(user.id)}
+        error={`You can have ${MAX_KEYS_PER_USER} keys at a time. Revoke one first.`}
+      />,
+    )
+  }
+
+  const { token } = await createApiKey(user.id, name)
+  await pruneLedger()
+
+  return c.html(<ApiKeys keys={await keysForUser(user.id)} fresh={token} />)
+})
+
+app.post('/profile/keys/:id/revoke', async (c) => {
+  const user = c.get('user')
+  await revokeApiKey(user.id, c.req.param('id'))
+  return c.html(<ApiKeys keys={await keysForUser(user.id)} />)
 })
 
 app.post('/profile/colour/:colour', async (c) => {

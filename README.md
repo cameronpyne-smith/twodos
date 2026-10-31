@@ -2,7 +2,7 @@
 
 A shared todo app for couples and small groups.
 
-**Current state: Milestone 4.1 — profile stats.** Accounts, multiple lists, membership and single-use
+**Current state: Milestone 4.2 — a BEST agent surface.** Accounts, multiple lists, membership and single-use
 invite links, with rename and sharing behind a cog in the header. Todos carry an assignee, a due
 date and notes, all settable as you add them, with the due date in a column down the right edge,
 overdue highlighting and filter chips. Each one is also worth points — 1 by default, more for the
@@ -12,6 +12,10 @@ flagged important, which floats it to the top. Your profile charts the points yo
 day for the last week, with your running totals under it. Done items collapse into a group that
 hides after 24 hours, and ticking one plays a short ding that gets richer the more the item was
 worth.
+
+The whole of that is also reachable by an assistant: twodos publishes a BEST manifest at
+`/.well-known/best`, and an API key made on your profile lets an agent read your lists and change
+them on your behalf.
 
 ## Stack
 
@@ -36,6 +40,7 @@ src/db.ts           Todo queries, filtering, overdue test
 src/dates.ts        Europe/London date handling and due-date formatting
 src/colours.ts      The user colour palette and its assignment rules
 src/sql.ts          Lazy Neon connection
+src/best/           The BEST agent surface: manifest, catalogues, commands, queries, keys
 src/vercel.ts       Production entry point (Node request listener)
 src/dev.ts          Local dev server, serves public/ and the app
 migrations/         Numbered .sql files, applied in order
@@ -513,6 +518,47 @@ making the row ambiguous.
 Because todos now join `memberships` rather than `users` to reach the assignee, an assignee who
 is no longer a member of the list renders with no name and no colour instead of a stale one.
 
+## BEST
+
+twodos publishes an agent surface following the
+[Behavioral State Protocol](https://behavioralstate.io), so an assistant can be pointed at the
+site by name and work out what it can do without being told. Discovery lives at
+`/.well-known/best`, which always answers without a credential; everything behind it needs one.
+
+The manifest declares two capabilities, both fully implemented: commands, which change a list and
+the tasks on it, and queries, which read what a list currently holds. There is no event log yet —
+nothing in twodos records a task being reassigned or reworded, so publishing one would mean
+publishing an incomplete picture. That capability arrives with the activity feed.
+
+The protocol has no synchronous command response: a command is acknowledged with the identifier it
+was correlated under, and anything it created is found by filtering the todos query on that
+identifier.
+
+### Keys
+
+A key is made on your profile page and shown once. It is stored only as a hash, so a lost key is
+replaced rather than recovered, and revoking one takes effect immediately.
+
+A key reaches the lists you are a member of and the tasks on them. It cannot change your password
+or email, invite anyone to a list, pick your colour, or close your account — those live behind the
+session cookie and are not reachable with a key at all. Keys do not expire on their own; the
+profile page shows when each was last used so a forgotten one is visible.
+
+Commands are limited to 60 a minute per key, and a command body to 64 KB. Command identifiers are
+remembered for 30 days, which is the window in which re-sending one is treated as a retry of the
+original rather than a new instruction.
+
+### Checking it
+
+The protocol ships a conformance validator. Point it at a deployment:
+
+```bash
+npx @behavioralstate/best-validate https://twodos.pyne-smith.com
+```
+
+It runs without writing anything. Add `--api-key` to check the authenticated routes rather than
+only their existence.
+
 ## Deploying
 
 Push to `main` and Vercel deploys automatically. Set these in the project's
@@ -585,6 +631,8 @@ Never edit a migration that has already been applied — add a new one.
 ## Next
 
 Milestone 5 is the activity feed, which shares its foundations with points: `completed_by`,
-`completed_at` and `scored_points` are already the ledger it needs to read. Recurrence — a
+`completed_at` and `scored_points` are already the ledger it needs to read. It is also what the
+BEST events capability is waiting on, and todos already carry the correlation identifier those
+events will need. Recurrence — a
 repeating todo that rolls forward on the same row when completed — is still outstanding and moves
 after it. See the design notes for the full sequence.

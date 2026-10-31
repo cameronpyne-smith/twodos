@@ -141,13 +141,20 @@ export async function createTodo(
   listId: string,
   createdBy: string,
   fields: TodoFields,
-): Promise<void> {
-  await sql()`
-    insert into todos (list_id, created_by, title, notes, assignee_id, due_date, important, points)
+  correlationId: string | null = null,
+): Promise<string> {
+  const rows = (await sql()`
+    insert into todos (list_id, created_by, title, notes, assignee_id, due_date, important,
+                       points, correlation_id)
     values (${listId}, ${createdBy}, ${fields.title}, ${fields.notes},
             ${fields.assigneeId}::uuid, ${fields.dueDate}::date, ${fields.important},
-            ${fields.points})
-  `
+            ${fields.points}, ${correlationId})
+    returning id
+  `) as { id: string }[]
+
+  const id = rows[0]?.id
+  if (!id) throw new Error('Insert returned no todo')
+  return id
 }
 
 export async function updateTodo(listId: string, id: string, fields: TodoFields): Promise<void> {
@@ -249,4 +256,107 @@ export async function lifetimeStats(userId: string): Promise<Lifetime> {
   `) as Lifetime[]
 
   return rows[0] ?? { done: 0, points: 0, best: 0, since: null }
+}
+
+export type TodoStatus = 'open' | 'done' | 'all'
+
+export type TodoQuery = {
+  status: TodoStatus
+  since: string | null
+  correlationId: string | null
+}
+
+export async function todosFor(listId: string, query: TodoQuery): Promise<Todo[]> {
+  return (await sql()`
+    select t.id, t.title, t.notes, t.important, t.assignee_id,
+           u.display_name as assignee_name, u.colour as assignee_colour,
+           to_char(t.due_date, 'YYYY-MM-DD') as due_date, t.points,
+           to_char(t.completed_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as completed_at,
+           to_char(t.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as created_at
+    from todos t
+    left join memberships m on m.user_id = t.assignee_id and m.list_id = t.list_id
+    left join users u on u.id = m.user_id
+    where t.list_id = ${listId}
+      and t.deleted_at is null
+      and (${query.status}::text = 'all'
+           or (${query.status}::text = 'open' and t.completed_at is null)
+           or (${query.status}::text = 'done' and t.completed_at is not null))
+      and (${query.since}::timestamptz is null
+           or t.created_at >= ${query.since}::timestamptz
+           or t.completed_at >= ${query.since}::timestamptz)
+      and (${query.correlationId}::text is null or t.correlation_id = ${query.correlationId})
+    order by (t.completed_at is not null),
+             t.completed_at desc,
+             t.important desc,
+             t.due_date asc nulls last,
+             t.created_at desc,
+             t.id
+  `) as Todo[]
+}
+
+export async function setTodoDone(
+  listId: string,
+  id: string,
+  userId: string,
+  done: boolean,
+): Promise<void> {
+  await sql()`
+    update todos
+    set completed_at  = case when ${done} then coalesce(completed_at, now()) else null end,
+        completed_by  = case when ${done} then coalesce(completed_by, ${userId}::uuid) else null end,
+        scored_points = case when ${done} then coalesce(scored_points, points) else null end
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
+}
+
+export async function setTodoText(
+  listId: string,
+  id: string,
+  title: string,
+  notes: string | null,
+): Promise<void> {
+  await sql()`
+    update todos set title = ${title}, notes = ${notes}
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
+}
+
+export async function setTodoAssignee(
+  listId: string,
+  id: string,
+  assigneeId: string | null,
+): Promise<void> {
+  await sql()`
+    update todos set assignee_id = ${assigneeId}::uuid
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
+}
+
+export async function setTodoDue(
+  listId: string,
+  id: string,
+  dueDate: string | null,
+): Promise<void> {
+  await sql()`
+    update todos set due_date = ${dueDate}::date
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
+}
+
+export async function setTodoPoints(listId: string, id: string, points: number): Promise<void> {
+  await sql()`
+    update todos set points = ${points}
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
+}
+
+export async function setTodoImportant(
+  listId: string,
+  id: string,
+  important: boolean,
+): Promise<void> {
+  await sql()`
+    update todos set important = ${important}
+    where id = ${id} and list_id = ${listId} and deleted_at is null
+  `
 }
